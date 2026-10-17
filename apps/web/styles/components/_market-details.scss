@@ -1,0 +1,210 @@
+.market-details {
+    @apply mb-8 overflow-hidden rounded-xl;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    scroll-margin-top: 24px;
+
+    &__header {
+        @apply flex flex-wrap items-center justify-between gap-5 p-6;
+    }
+
+    h2 {
+        @apply text-2xl font-semibold;
+    }
+
+    h2 > span {
+        @apply ml-2 text-sm font-normal;
+        color: var(--muted);
+    }
+
+    &__pair,
+    &__hint {
+        @apply mt-2 text-xs;
+        color: var(--muted);
+    }
+
+    &__hint {
+        @apply px-6;
+    }
+
+    &__quote {
+        @apply text-right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__quote strong {
+        @apply text-3xl font-medium;
+    }
+
+    &__quote > span,
+    &__quote p {
+        @apply text-xs;
+        color: var(--muted);
+    }
+
+    &__quote p {
+        @apply mt-2;
+    }
+
+    &__quote[data-freshness="stale"] strong {
+        color: var(--accent);
+    }
+
+    &__stats {
+        @apply mx-6 grid grid-cols-2 gap-5 border-y py-5;
+        border-color: var(--border);
+    }
+
+    dt {
+        @apply mb-2 text-xs;
+        color: var(--muted);
+    }
+
+    dd {
+        @apply break-words text-sm font-medium;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__chart-header {
+        @apply flex items-center justify-between gap-3 p-6;
+    }
+
+    h3 {
+        @apply text-sm font-medium;
+    }
+
+    &__chart-header p {
+        @apply mt-1 text-[11px];
+        color: var(--muted);
+    }
+
+    &__timeframes {
+        @apply flex gap-1 rounded-lg p-1;
+        background: var(--background);
+    }
+
+    &__timeframes button {
+        @apply rounded px-3 py-2 text-xs;
+        color: var(--muted);
+    }
+
+    &__timeframes button[aria-pressed="true"] {
+        background: var(--raised);
+        color: var(--accent);
+    }
+
+    @media (min-width: 768px) {
+        &__stats {
+            @apply grid-cols-4;
+        }
+    }
+
+    @media (max-width: 640px) {
+        &__header,
+        &__chart-header {
+            @apply p-4;
+        }
+
+        &__quote {
+            @apply text-left;
+        }
+
+        &__stats {
+            @apply mx-4;
+        }
+    }
+}
+
+.market-chart {
+    &__canvas {
+        height: 390px;
+        width: 100%;
+    }
+
+    &__summary {
+        @apply flex flex-wrap gap-x-4 gap-y-2 px-6 pb-3 text-[11px];
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__empty {
+        @apply flex min-h-48 items-center justify-center px-6 text-center text-sm;
+        color: var(--muted);
+    }
+
+    &__notice {
+        @apply mx-6 my-3 rounded-lg p-3 text-sm;
+        color: var(--accent);
+        background: var(--background);
+    }
+
+    &__notice button {
+        @apply ml-3 underline underline-offset-4;
+    }
+
+    &__caption,
+    &__attribution {
+        @apply px-6 py-3 text-[11px];
+        color: var(--muted);
+    }
+
+    &__attribution a {
+        @apply underline underline-offset-4;
+    }
+}
+
+.price-flash {
+    @apply inline-block rounded px-1;
+    font-variant-numeric: tabular-nums;
+
+    &[data-direction="up"] {
+        animation: price-flash-up 800ms ease-out;
+    }
+
+    &[data-direction="down"] {
+        animation: price-flash-down 800ms ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &[data-direction] {
+            animation: none;
+        }
+    }
+}
+
+@keyframes price-flash-up {
+    from {
+        background: var(--positive);
+        color: var(--background);
+    }
+    to {
+        background: transparent;
+    }
+}
+
+@keyframes price-flash-down {
+    from {
+        background: var(--negative);
+        color: var(--background);
+    }
+    to {
+        background: transparent;
+    }
+}
+
+.market-row {
+    cursor: pointer;
+
+    &[data-selected="true"] {
+        background: var(--raised);
+        box-shadow: inset 3px 0 var(--accent);
+    }
+
+    &__select {
+        @apply text-sm font-semibold;
+    }
+
+    &__select:hover {
+        color: var(--accent);
+    }
+}

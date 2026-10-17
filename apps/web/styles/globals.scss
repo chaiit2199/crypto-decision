@@ -1,0 +1,47 @@
+@use "components";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    color-scheme: dark;
+    --background: #101213;
+    --surface: #171a1c;
+    --raised: #202427;
+    --border: #2c3134;
+    --text: #eceeed;
+    --muted: #9aa3a6;
+    --accent: #e9b17c;
+    --positive: #74c7a3;
+    --negative: #ed8e94;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+    font: inherit;
+}
+button,
+a,
+input {
+    -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+}
+
+::selection {
+    background: #65503e;
+}

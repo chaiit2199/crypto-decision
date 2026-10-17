@@ -1,0 +1,193 @@
+defmodule CryptoDecisionLab.Decisions do
+  @moduledoc "Five-minute research analysis. Reads never trigger paid provider calls."
+  import Ecto.Query
+  require Logger
+  alias CryptoDecisionLab.{Repo, MarketData, TechnicalAnalysis}
+  alias CryptoDecisionLab.MarketData.Collector
+  alias CryptoDecisionLab.Decisions.{Analysis, AnalysisWorker, JevProvider}
+
+  @version "hourly-research-v1"
+  @spec enabled?() :: boolean()
+  def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
+
+  @spec enqueue_all() :: {:ok, non_neg_integer()} | {:error, term()}
+  def enqueue_all do
+    if enabled?() do
+      slot = div(DateTime.to_unix(Collector.now()), 300) * 300
+
+      Repo.transaction(fn ->
+        MarketData.Sync.active_symbols()
+        |> Enum.map(fn symbol ->
+          case %{symbol_id: symbol.id, slot: slot} |> AnalysisWorker.new() |> Oban.insert() do
+            {:ok, job} -> job.id
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end)
+        |> length()
+      end)
+    else
+      {:ok, 0}
+    end
+  end
+
+  @doc "Analyze at most once per symbol/slot under a shared database lock. No implicit retry."
+  @spec analyze(integer(), integer()) :: {:ok, term()} | {:error, term()}
+  def analyze(symbol_id, unix_slot) do
+    now = Collector.now()
+    slot = DateTime.from_unix!(unix_slot * 1_000_000, :microsecond)
+
+    cond do
+      not enabled?() ->
+        {:ok, :disabled}
+
+      rem(unix_slot, 300) != 0 or DateTime.diff(now, slot) not in 0..299 ->
+        {:ok, :expired}
+
+      true ->
+        Repo.transaction(
+          fn ->
+            case Repo.query!("SELECT pg_try_advisory_xact_lock(764218, 1)").rows do
+              [[true]] -> analyze_locked(symbol_id, slot, now)
+              _ -> Repo.rollback(:busy)
+            end
+          end,
+          timeout: 30_000
+        )
+    end
+  end
+
+  defp analyze_locked(symbol_id, slot, now) do
+    existing = Repo.get_by(Analysis, market_symbol_id: symbol_id, slot: slot)
+
+    if existing do
+      existing
+    else
+      config = Application.fetch_env!(:crypto_decision_lab, :jev)
+
+      attrs = %{
+        slot: slot,
+        status: "no_data",
+        signal: "NO_DATA",
+        requested_model: config[:model],
+        configuration_version: @version,
+        analyzed_at: now,
+        valid_until: DateTime.add(slot, 300),
+        risk_result: %{mode: "research_only", execution_allowed: false}
+      }
+
+      result =
+        with {:ok, inputs} <- MarketData.analysis_inputs(symbol_id, now),
+             {:ok, features} <- TechnicalAnalysis.features(inputs.candles, now) do
+          features = Map.merge(features, inputs.snapshot)
+          attrs = Map.merge(attrs, %{features: features, data_at: inputs.price_at})
+          evaluate(attrs, features, now)
+        else
+          {:error, reason} -> Map.put(attrs, :reason, to_string(reason))
+        end
+
+      record =
+        %Analysis{market_symbol_id: symbol_id} |> Analysis.changeset(result) |> Repo.insert!()
+
+      Logger.info("jev_analysis",
+        symbol_id: symbol_id,
+        status: record.status,
+        reason: record.reason
+      )
+
+      record
+    end
+  end
+
+  defp evaluate(attrs, features, now) do
+    with :ok <- available(now),
+         {:ok, response} <- provider().analyze(features) do
+      # Validate even injected providers before accepting a persisted successful response.
+      case JevProvider.decode({:ok, %{status: 200, body: response}}) do
+        {:ok, response} ->
+          answers = response["answers"]
+
+          Map.merge(attrs, %{
+            status: "ready",
+            signal: signal(answers),
+            model: response["model"],
+            answers: answers,
+            raw_response: response
+          })
+
+        {:error, reason, cooldown} ->
+          failure(attrs, reason, cooldown, now)
+      end
+    else
+      {:error, reason, cooldown} -> failure(attrs, reason, cooldown, now)
+      {:blocked, reason} -> Map.merge(attrs, %{status: "error", reason: reason})
+    end
+  end
+
+  defp provider, do: Application.get_env(:crypto_decision_lab, :decision_provider, JevProvider)
+
+  defp available(now) do
+    case Repo.query!("SELECT blocked_until, last_error FROM jev_provider_states WHERE id = 1").rows do
+      [[%NaiveDateTime{} = until, reason]] ->
+        if NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt,
+          do: {:blocked, reason},
+          else: :ok
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp failure(attrs, reason, seconds, now) do
+    Repo.query!(
+      """
+      INSERT INTO jev_provider_states (id, blocked_until, last_error) VALUES (1, $1, $2)
+      ON CONFLICT (id) DO UPDATE SET blocked_until = EXCLUDED.blocked_until, last_error = EXCLUDED.last_error
+      """,
+      [DateTime.to_naive(DateTime.add(now, seconds)), reason]
+    )
+
+    Map.merge(attrs, %{status: "error", reason: reason})
+  end
+
+  # Research labels only: confidence is deliberately not treated as expected trading profit.
+  defp signal(answers) do
+    case {answers["trend"]["choice"], answers["momentum"]["choice"],
+          answers["volatility"]["choice"]} do
+      {"BULLISH", "STRENGTHENING", "NORMAL"} -> "BUY"
+      {"BEARISH", "WEAKENING", "NORMAL"} -> "SELL"
+      _ -> "WAIT"
+    end
+  end
+
+  @doc "Latest analysis per symbol, with expiry calculated at read time; no provider I/O."
+  @spec latest([integer()]) :: map()
+  def latest(ids) do
+    Repo.all(
+      from a in Analysis,
+        where: a.market_symbol_id in ^ids,
+        distinct: a.market_symbol_id,
+        order_by: [asc: a.market_symbol_id, desc: a.slot]
+    )
+    |> Map.new(fn row ->
+      fresh = DateTime.compare(Collector.now(), row.valid_until) == :lt
+
+      data =
+        Map.take(row, [
+          :id,
+          :status,
+          :signal,
+          :model,
+          :configuration_version,
+          :features,
+          :answers,
+          :risk_result,
+          :reason,
+          :data_at,
+          :analyzed_at,
+          :valid_until
+        ])
+
+      {row.market_symbol_id, Map.put(data, :freshness, if(fresh, do: "fresh", else: "stale"))}
+    end)
+  end
+end

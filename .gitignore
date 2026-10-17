@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+**/_build/
+**/deps/
+**/erl_crash.dump
+**/node_modules/
+**/.next/
+.local/
+**/*.tsbuildinfo
+**/test-results/
+**/playwright-report/

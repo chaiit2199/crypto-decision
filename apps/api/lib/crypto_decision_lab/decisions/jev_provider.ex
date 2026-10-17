@@ -1,0 +1,133 @@
+defmodule CryptoDecisionLab.Decisions.JevProvider do
+  @moduledoc "TypeSafe System One adapter. Never log credentials or upstream error bodies."
+  @behaviour CryptoDecisionLab.Decisions.DecisionProvider
+
+  @choices %{
+    "trend" => ~w(BULLISH BEARISH SIDEWAYS),
+    "momentum" => ~w(STRENGTHENING WEAKENING MIXED),
+    "volatility" => ~w(ELEVATED NORMAL)
+  }
+
+  @impl true
+  def analyze(features) do
+    config = Application.fetch_env!(:crypto_decision_lab, :jev)
+
+    if config[:api_key] in [nil, ""] do
+      {:error, "missing_api_key", 900}
+    else
+      options = [
+        url: "https://api.typesafe.ai/v1/systemone",
+        auth: {:bearer, config[:api_key]},
+        json: %{model: config[:model], state: features, questions: questions()},
+        receive_timeout: 15_000,
+        connect_options: [timeout: 5_000],
+        retry: false,
+        redirect: false
+      ]
+
+      request = Application.get_env(:crypto_decision_lab, :jev_request, &Req.post/1)
+      options |> request.() |> decode()
+    end
+  end
+
+  defp questions do
+    %{
+      trend: %{
+        type: "choice",
+        instructions:
+          "Classify the OBSERVED hourly trend using only supplied closed-candle EMA, returns and price. Do not predict future returns or assume news/order book data.",
+        criteria: %{
+          BULLISH: "Price and EMA20/EMA50 structure support an upward trend.",
+          BEARISH: "Price and EMA20/EMA50 structure support a downward trend.",
+          SIDEWAYS: "Trend evidence is mixed or range-bound."
+        }
+      },
+      momentum: %{
+        type: "choice",
+        instructions:
+          "Assess buying momentum from RSI14, 1H/24H returns and current price relative to the last close. RSI extremes alone do not imply reversal.",
+        criteria: %{
+          STRENGTHENING: "Indicators support positive buying momentum.",
+          WEAKENING: "Indicators support selling pressure or weakening buying momentum.",
+          MIXED: "Conflicting or insufficient directional evidence."
+        }
+      },
+      volatility: %{
+        type: "choice",
+        instructions:
+          "Assess observed volatility from returns and 24H high/low relative to price. This is not an execution or liquidity assessment.",
+        criteria: %{
+          ELEVATED: "Large price swings or conflicting abrupt price moves warrant caution.",
+          NORMAL: "Supplied price movements do not show elevated volatility."
+        }
+      }
+    }
+  end
+
+  @doc "Validate the external choice contract; reject partial or inconsistent answers."
+  @spec decode(term()) :: {:ok, map()} | {:error, String.t(), non_neg_integer()}
+  def decode({:ok, %{status: 200, body: body}}) do
+    case body do
+      %{
+        "model" => model,
+        "answers" => answers,
+        "usage" => %{"input_tokens" => input, "output_tokens" => output}
+      }
+      when is_binary(model) and byte_size(model) > 0 and is_map(answers) and
+             is_integer(input) and input >= 0 and is_integer(output) and output >= 0 ->
+        if Enum.all?(@choices, fn {name, choices} -> valid_answer?(answers[name], choices) end),
+          do: {:ok, body},
+          else: {:error, "invalid_response", 60}
+
+      _ ->
+        {:error, "invalid_response", 60}
+    end
+  end
+
+  def decode({:ok, %{status: status} = response}) do
+    case status do
+      401 -> {:error, "authentication_failed", 900}
+      403 -> {:error, "access_denied", 900}
+      402 -> {:error, "quota_exhausted", 900}
+      429 -> {:error, "rate_limited", retry_after(response)}
+      code when code >= 500 -> {:error, "upstream_unavailable", 60}
+      _ -> {:error, "request_rejected", 300}
+    end
+  end
+
+  def decode(_), do: {:error, "transport_error", 60}
+
+  defp valid_answer?(
+         %{
+           "type" => "choice",
+           "choice" => choice,
+           "confidence" => confidence,
+           "probabilities" => probabilities
+         },
+         choices
+       )
+       when is_map(probabilities) do
+    values = Map.values(probabilities)
+
+    choice in choices and probability?(confidence) and
+      Enum.sort(Map.keys(probabilities)) == Enum.sort(choices) and
+      Enum.all?(values, &probability?/1) and abs(Enum.sum(values) - 1) <= 0.02 and
+      probabilities[choice] == Enum.max(values)
+  end
+
+  defp valid_answer?(_, _), do: false
+  defp probability?(value), do: is_number(value) and value >= 0 and value <= 1
+
+  defp retry_after(response) do
+    case get_in(response, [:headers, "retry-after"]) do
+      [value | _] ->
+        case Integer.parse(value) do
+          {seconds, ""} when seconds >= 0 -> max(seconds, 1)
+          _ -> 300
+        end
+
+      _ ->
+        300
+    end
+  end
+end

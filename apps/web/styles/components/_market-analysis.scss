@@ -1,0 +1,53 @@
+.market-analysis {
+    @apply mx-6 mt-6 rounded-lg border p-4;
+    border-color: var(--border);
+    background: var(--background);
+
+    &__header {
+        @apply flex flex-wrap items-center justify-between gap-2;
+    }
+
+    &__header span,
+    &__time,
+    &__caption {
+        @apply text-xs leading-relaxed;
+        color: var(--muted);
+    }
+
+    &__time,
+    &__caption,
+    &__notice {
+        @apply mt-3;
+    }
+
+    &__notice {
+        @apply text-sm;
+        color: var(--accent);
+    }
+
+    &__signal {
+        @apply my-4 text-base font-semibold;
+        color: var(--muted);
+    }
+
+    &__signal[data-signal="BUY"] {
+        color: var(--positive);
+    }
+
+    &__signal[data-signal="SELL"] {
+        color: var(--negative);
+    }
+
+    &__answers,
+    &__features {
+        @apply my-4 grid gap-3;
+
+        @media (min-width: 640px) {
+            @apply grid-cols-3;
+        }
+    }
+
+    @media (max-width: 640px) {
+        @apply mx-4;
+    }
+}
