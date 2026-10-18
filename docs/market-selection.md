@@ -41,3 +41,9 @@ asset |> Ecto.Changeset.change(enabled: false) |> Repo.update!()
 ```
 
 Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset đã tắt; dashboard vẫn giữ hàng với trạng thái “Đã tắt” để truy vết. Các test mặc định đang kiểm tra danh mục gốc 32 mã, cần cập nhật kỳ vọng khi thay danh mục mặc định.
+
+## Chẩn đoán USD không đồng bộ trên production
+
+`SourceHTTP` phải phân biệt JSON không hợp lệ, thiếu/sai HTTP `Date`, response cũ và response ở tương lai. Không gộp các trường hợp này thành `:invalid_response`, vì sẽ che lỗi đồng hồ VPS hoặc lỗi upstream. Giữ giới hạn HTTP Date: tối đa 120 giây cũ hoặc 5 giây ở tương lai; không thay timestamp bằng thời gian fetch để làm dữ liệu cũ thành mới. Sai lệch thời gian được trả bằng giây trong lỗi và lưu vào trạng thái nguồn.
+
+Kiểm tra trên chính VPS: `date -u` và `curl -sS --max-time 15 -D - -o /dev/null https://api.exchange.coinbase.com/products`. Đối chiếu HTTP status, Date, Content-Type và UTC của hệ điều hành. Thiếu cặp USD không có nghĩa mọi asset không được Coinbase hỗ trợ: metadata có thể chưa lưu được. Sau khi sửa nguyên nhân và deploy, collector tự thử lại theo lịch sau cooldown; không cần xóa database hoặc lịch sử job lỗi.

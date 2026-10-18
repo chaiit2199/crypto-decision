@@ -19,8 +19,6 @@ export async function getMarketMonitor(): Promise<MarketMonitorResult> {
             }),
         ]);
 
-        console.log("responses", responses);
-
         if (responses.some((response) => !response.ok)) {
             return {
                 checked_at,

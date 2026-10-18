@@ -245,6 +245,55 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
       MarketFixtures.response(%{}, 200, %{"date" => ["Thu, 01 Jan 2026 00:00:00 GMT"]})
     ])
 
-    assert {:error, :invalid_response} = SourceHTTP.get("coinbase", "/products")
+    assert {:error, {:stale_response, age}} = SourceHTTP.get("coinbase", "/products")
+    assert age > 120
+  end
+
+  test "invalid JSON and missing or malformed HTTP dates remain distinct" do
+    {:ok, response} = MarketFixtures.response([])
+
+    for {body, headers, reason} <- [
+          {"<html>upstream error</html>", response.headers, :invalid_json},
+          {"[]", %{}, :missing_response_date},
+          {"[]", %{"date" => []}, :invalid_response_date},
+          {"[]", %{"date" => ["invalid"]}, :invalid_response_date},
+          {"[]", %{"date" => ["Sat, 32 Oct 2026 12:00:00 GMT"]}, :invalid_response_date}
+        ] do
+      Process.put(:source_responses, [{:ok, %{response | body: body, headers: headers}}])
+      assert {:error, ^reason} = SourceHTTP.get("coinbase", "/products")
+    end
+  end
+
+  test "HTTP dates keep the freshness boundaries and report clock offset in seconds" do
+    now = MarketFixtures.now()
+
+    for {offset, expected} <- [
+          {-121, {:error, {:stale_response, 121}}},
+          {-120, :ok},
+          {5, :ok},
+          {6, {:error, {:future_response, 6}}}
+        ] do
+      date = now |> DateTime.add(offset) |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
+      Process.put(:source_responses, [MarketFixtures.response([], 200, %{"date" => [date]})])
+      result = SourceHTTP.get("coinbase", "/products")
+
+      if expected == :ok do
+        assert {:ok, [], data_at} = result
+        assert DateTime.diff(data_at, now) == offset
+      else
+        assert result == expected
+      end
+    end
+  end
+
+  test "metadata preserves the specific response error without registering USD symbols" do
+    date =
+      MarketFixtures.now() |> DateTime.add(600) |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    Process.put(:source_responses, [MarketFixtures.response([], 200, %{"date" => [date]})])
+
+    assert {:error, {:future_response, 600}} = SourceSync.metadata("coinbase")
+    assert SourceSync.active_symbols("coinbase") == []
+    assert Repo.get!(CollectorState, "coinbase").last_error == "{:future_response, 600}"
   end
 end

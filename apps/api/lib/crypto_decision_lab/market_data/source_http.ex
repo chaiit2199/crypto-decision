@@ -2,7 +2,7 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
   @moduledoc "Public read-only USD/gold transport. Caller serializes requests and persists cooldowns."
   alias CryptoDecisionLab.MarketData.Collector
 
-  @spec get(String.t(), String.t(), keyword()) :: {:ok, map(), DateTime.t()} | {:error, term()}
+  @spec get(String.t(), String.t(), keyword()) :: {:ok, term(), DateTime.t()} | {:error, term()}
   def get(source, path, params \\ []) do
     base = %{
       "coinbase" => "https://api.exchange.coinbase.com",
@@ -31,7 +31,8 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
              {:ok, decoded} <- Jason.decode(body, floats: :decimals) do
           {:ok, decoded, data_at}
         else
-          _ -> {:error, :invalid_response}
+          {:error, %Jason.DecodeError{}} -> {:error, :invalid_json}
+          {:error, _} = error -> error
         end
 
       {:ok, %{status: 429, headers: headers}} ->
@@ -57,9 +58,8 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
     end
   end
 
-  defp response_time(headers) do
-    with [date | _] <- headers["date"],
-         [_, day, month, year, hour, minute, second] <-
+  defp response_time(%{"date" => [date | _]}) when is_binary(date) do
+    with [_, day, month, year, hour, minute, second] <-
            Regex.run(~r/^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/, date),
          index when is_integer(index) <-
            Enum.find_index(~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec), &(&1 == month)),
@@ -75,11 +75,21 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
          time =
            DateTime.from_naive!(naive, "Etc/UTC")
            |> DateTime.to_unix(:microsecond)
-           |> DateTime.from_unix!(:microsecond),
-         true <- DateTime.diff(Collector.now(), time) in -5..120 do
-      {:ok, time}
+           |> DateTime.from_unix!(:microsecond) do
+      age_seconds = DateTime.diff(Collector.now(), time)
+
+      cond do
+        age_seconds > 120 -> {:error, {:stale_response, age_seconds}}
+        age_seconds < -5 -> {:error, {:future_response, -age_seconds}}
+        true -> {:ok, time}
+      end
     else
-      _ -> {:error, :stale_response}
+      _ -> {:error, :invalid_response_date}
     end
   end
+
+  defp response_time(headers) when not is_map_key(headers, "date"),
+    do: {:error, :missing_response_date}
+
+  defp response_time(_headers), do: {:error, :invalid_response_date}
 end
