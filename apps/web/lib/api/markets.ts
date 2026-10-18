@@ -19,20 +19,45 @@ export async function getMarketMonitor(): Promise<MarketMonitorResult> {
             }),
         ]);
 
+        console.log("responses", responses);
+
         if (responses.some((response) => !response.ok)) {
-            return { checked_at, ok: false, message: "API thị trường chưa sẵn sàng. Trang sẽ tự kết nối lại." };
+            return {
+                checked_at,
+                ok: false,
+                message:
+                    "API thị trường chưa sẵn sàng. Trang sẽ tự kết nối lại.",
+            };
         }
 
-        const [markets, status] = await Promise.all(responses.map((response) => response.json()));
+        const [markets, status] = await Promise.all(
+            responses.map((response) => response.json()),
+        );
         const parsedMarkets = marketsSchema.safeParse(markets);
         const parsedStatus = statusSchema.safeParse(status);
 
         if (!parsedMarkets.success || !parsedStatus.success) {
-            return { checked_at, ok: false, message: "Dữ liệu API không đúng định dạng. Vui lòng kiểm tra backend." };
+            return {
+                checked_at,
+                ok: false,
+                message:
+                    "Dữ liệu API không đúng định dạng. Vui lòng kiểm tra backend.",
+            };
         }
 
-        return { checked_at, ok: true, data: { assets: parsedMarkets.data.data, status: parsedStatus.data.data } };
+        return {
+            checked_at,
+            ok: true,
+            data: {
+                assets: parsedMarkets.data.data,
+                status: parsedStatus.data.data,
+            },
+        };
     } catch {
-        return { checked_at, ok: false, message: "Không kết nối được API. Trang sẽ tự thử lại sau 5 giây." };
+        return {
+            checked_at,
+            ok: false,
+            message: "Không kết nối được API. Trang sẽ tự thử lại sau 5 giây.",
+        };
     }
 }
