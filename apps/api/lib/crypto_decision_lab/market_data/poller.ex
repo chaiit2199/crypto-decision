@@ -1,5 +1,5 @@
 defmodule CryptoDecisionLab.MarketData.Poller do
-  @moduledoc "Monotonic 30-second scheduler; one monitored task at a time, plus a shared DB deadline."
+  @moduledoc "Configurable monotonic scheduler; one monitored task at a time, plus a shared DB deadline."
   use GenServer
   require Logger
   alias CryptoDecisionLab.MarketData.{Sync, SyncWorker}
@@ -16,7 +16,12 @@ defmodule CryptoDecisionLab.MarketData.Poller do
 
     state = %{
       enabled: enabled,
-      interval: Keyword.get(opts, :interval, 30_000),
+      interval:
+        Keyword.get(
+          opts,
+          :interval,
+          Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms)
+        ),
       retry_interval: Keyword.get(opts, :retry_interval, 1_000),
       retry_timer: nil,
       task: nil,
@@ -55,7 +60,7 @@ defmodule CryptoDecisionLab.MarketData.Poller do
 
     if result == {:error, :collector_busy} do
       # Retry lock acquisition soon during backfill. Sync.poll/0 still enforces
-      # the shared 30-second deadline before making any Binance request.
+      # the shared configured deadline before making any Binance request.
       timer = Process.send_after(self(), :retry_tick, state.retry_interval)
       {:noreply, %{state | retry_timer: timer}}
     else

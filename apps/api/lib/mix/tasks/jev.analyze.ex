@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Jev.Analyze do
-  @shortdoc "Enqueue this five-minute analysis slot for every active symbol"
+  @shortdoc "Enqueue the current configured analysis slot for every active symbol"
   use Mix.Task
 
   @impl true

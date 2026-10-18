@@ -29,6 +29,7 @@ function fixtureMonitor(price = "100.00000000", analysis: MarketAnalysisData | n
                                   enabled: true,
                                   trading_status: "TRADING",
                                   analysis_enabled: true,
+                                  analysis_interval_seconds: 120,
                                   analysis,
                                   latest_price: { price, fetched_at: timestamp },
                                   ticker_stats: {
@@ -99,6 +100,7 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
     await page.goto("/");
     const panel = page.getByRole("region", { name: "Phân tích Jev" });
     await expect(panel).toContainText("Đang chờ lần phân tích Jev đầu tiên");
+    await expect(panel).toContainText("Mỗi 2 phút · Chỉ báo 1H");
     analysis = {
         id: 1,
         status: "ready",

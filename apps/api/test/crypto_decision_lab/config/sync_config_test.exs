@@ -2,13 +2,16 @@ defmodule CryptoDecisionLab.SyncConfigTest do
   use ExUnit.Case, async: false
 
   @config_dir Path.expand("../../../config", __DIR__)
-  @variables ~w(MARKET_SYNC_ENABLED DATABASE_URL SECRET_KEY_BASE TEST_DB_NAME DB_NAME JEV_ENABLED TYPESAFE_API_KEY JEV_MODEL)
+  @variables ~w(MARKET_SYNC_ENABLED DATABASE_URL SECRET_KEY_BASE TEST_DB_NAME DB_NAME JEV_ENABLED TYPESAFE_API_KEY JEV_MODEL JEV_ENV_FILE)
 
-  setup do
+  @moduletag :tmp_dir
+
+  setup %{tmp_dir: tmp_dir} do
     previous = Map.new(@variables, &{&1, System.get_env(&1)})
     Enum.each(@variables, &System.delete_env/1)
     System.put_env("DATABASE_URL", "ecto://fixture:fixture@localhost/fixture_prod")
     System.put_env("SECRET_KEY_BASE", String.duplicate("fixture-only-", 8))
+    System.put_env("JEV_ENV_FILE", Path.join(tmp_dir, ".env.jev"))
 
     on_exit(fn ->
       Enum.each(previous, fn
@@ -60,14 +63,14 @@ defmodule CryptoDecisionLab.SyncConfigTest do
     refute config[:jev][:enabled]
   end
 
-  test "Jev runs independently on a five-minute Cron with its own queue" do
+  test "Jev dispatcher runs each minute with its own queue and configured slots" do
     System.put_env("MARKET_SYNC_ENABLED", "false")
     System.put_env("JEV_ENABLED", "true")
     config = config(:dev)
     assert config[:jev][:enabled]
     assert config[Oban][:queues] == [analysis: 1]
     cron = config[Oban][:plugins][Oban.Plugins.Cron][:crontab]
-    assert cron == [{"*/5 * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}]
+    assert cron == [{"* * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}]
   end
 
   test "Jev uses the exported credential and remains disabled without an explicit opt-in" do
@@ -79,5 +82,66 @@ defmodule CryptoDecisionLab.SyncConfigTest do
     assert config(:dev)[:jev][:api_key] == "synthetic-config-key"
     System.put_env("JEV_ENABLED", "false")
     refute config(:dev)[:jev][:enabled]
+  end
+
+  test "development intervals come from dev.exs while other environments retain their defaults" do
+    assert config(:dev)[:price_poll_interval_ms] == 60_000
+    assert config(:dev)[:analysis_interval_seconds] == 120
+
+    for env <- [:test, :prod] do
+      assert config(env)[:price_poll_interval_ms] == 30_000
+      assert config(env)[:analysis_interval_seconds] == 300
+    end
+  end
+
+  test "development loads local Jev opt-in, credential and model into the same scheduled config" do
+    File.write!(System.fetch_env!("JEV_ENV_FILE"), """
+    # Synthetic credentials only
+    export JEV_ENABLED=true
+    TYPESAFE_API_KEY="synthetic-local-key" # local fixture
+    JEV_MODEL='fixture-model'
+    """)
+
+    config = config(:dev)
+    assert config[:jev] == [enabled: true, api_key: "synthetic-local-key", model: "fixture-model"]
+    assert config[Oban][:queues][:analysis] == 1
+
+    assert {"* * * * *", CryptoDecisionLab.Decisions.AnalysisWorker} in config[Oban][:plugins][
+             Oban.Plugins.Cron
+           ][:crontab]
+
+    System.put_env("JEV_ENABLED", "false")
+    System.put_env("TYPESAFE_API_KEY", "")
+    System.put_env("JEV_MODEL", "exported-model")
+    config = config(:dev)
+    refute config[:jev][:enabled]
+    assert config[:jev][:api_key] == ""
+    assert config[:jev][:model] == "exported-model"
+    refute Keyword.has_key?(config[Oban][:queues], :analysis)
+  end
+
+  test "production and test ignore local Jev settings" do
+    File.write!(
+      System.fetch_env!("JEV_ENV_FILE"),
+      "JEV_ENABLED=true\nTYPESAFE_API_KEY=fixture-key\n"
+    )
+
+    for env <- [:prod, :test] do
+      config = config(env)
+      refute config[:jev][:enabled]
+      assert config[:jev][:api_key] == nil
+      assert config[Oban][:queues] == false
+    end
+  end
+
+  test "invalid local assignment reports its line without exposing its value" do
+    File.write!(
+      System.fetch_env!("JEV_ENV_FILE"),
+      "# fixture\nTYPESAFE_API_KEY=$(fixture-secret)\n"
+    )
+
+    assert_raise RuntimeError, "Invalid Jev assignment in JEV_ENV_FILE at line 2", fn ->
+      config(:dev)
+    end
   end
 end

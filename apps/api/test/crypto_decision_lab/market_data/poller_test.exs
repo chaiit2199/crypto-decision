@@ -60,4 +60,16 @@ defmodule CryptoDecisionLab.MarketData.PollerTest do
     ref = Process.monitor(second)
     assert_receive {:DOWN, ^ref, :process, ^second, _}
   end
+
+  test "the supervised timer uses the configured price interval" do
+    previous = Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms)
+    Application.put_env(:crypto_decision_lab, :price_poll_interval_ms, 60_000)
+
+    on_exit(fn ->
+      Application.put_env(:crypto_decision_lab, :price_poll_interval_ms, previous)
+    end)
+
+    pid = start_supervised!({Poller, name: :configured_poller, enabled: false})
+    assert :sys.get_state(pid).interval == 60_000
+  end
 end

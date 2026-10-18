@@ -85,9 +85,10 @@ defmodule CryptoDecisionLab.TradingKnowledge.DecisionService do
   defp available(now) do
     case Repo.query!("SELECT blocked_until, last_error FROM jev_provider_states WHERE id = 1").rows do
       [[%NaiveDateTime{} = until, reason]] ->
-        if NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt,
-          do: {:blocked, reason},
-          else: :ok
+        if NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt and
+             not (reason == "missing_api_key" and JevProvider.configured?()),
+           do: {:blocked, reason},
+           else: :ok
 
       _ ->
         :ok

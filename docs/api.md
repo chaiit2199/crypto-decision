@@ -53,3 +53,7 @@ Freshness gồm `status: fresh|stale|missing`, `age_seconds`, `timestamp` khi c�
 | 422 | incomplete_aggregation | Thiếu candle nguồn. |
 | 503 | database_unavailable | Health check DB thất bại. |
 | 404/500 | http_404/http_500 | Lỗi framework được trả bằng cùng error envelope. |
+
+## Research schedule metadata
+
+Market objects returned by `/api/markets` and `/api/markets/:symbol` include `analysis_interval_seconds` (positive integer). `/api/markets/:symbol/analysis` includes `data.interval_seconds`. Development uses 120 seconds; clients must display the API value instead of hardcoding a frequency. Historical `analysis.reason` describes the stored attempt and does not independently diagnose current runtime credentials.

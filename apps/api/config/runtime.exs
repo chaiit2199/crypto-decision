@@ -66,13 +66,21 @@ config :crypto_decision_lab,
   binance_base_url: System.get_env("BINANCE_BASE_URL", "https://data-api.binance.vision/api/v3")
 
 # Analysis is independently enabled; tests never call the paid provider automatically.
-jev_enabled = not is_test and System.get_env("JEV_ENABLED", "true") == "true"
+jev_local =
+  if config_env() == :dev do
+    {read_env, _binding} = Code.eval_file("dev_jev_env.exs", __DIR__)
+    read_env.(System.get_env("JEV_ENV_FILE", Path.expand("../../../.env.jev", __DIR__)))
+  else
+    %{}
+  end
+
+jev_env = fn name, default -> System.get_env(name, Map.get(jev_local, name, default)) end
+jev_enabled = not is_test and jev_env.("JEV_ENABLED", "false") == "true"
 
 config :crypto_decision_lab, :jev,
   enabled: jev_enabled,
-  api_key:
-    "e6614ce2444c44a810858bc7a2ebe4_455c0c46b6e2a3fc00023bc52a227a51bababd76fce302ef4e54fa62734f30fe",
-  model: System.get_env("JEV_MODEL", "jev-latest")
+  api_key: jev_env.("TYPESAFE_API_KEY", nil),
+  model: jev_env.("JEV_MODEL", "jev-latest")
 
 market_cron =
   if sync_enabled do
@@ -87,7 +95,7 @@ market_cron =
   end
 
 analysis_cron =
-  if jev_enabled, do: [{"*/5 * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}], else: []
+  if jev_enabled, do: [{"* * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}], else: []
 
 queues =
   if(sync_enabled, do: [market: 1], else: []) ++ if jev_enabled, do: [analysis: 1], else: []

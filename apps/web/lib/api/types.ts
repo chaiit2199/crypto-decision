@@ -53,6 +53,7 @@ const marketSchema = z.object({
     enabled: z.boolean(),
     trading_status: z.string(),
     analysis_enabled: z.boolean(),
+    analysis_interval_seconds: z.number().int().positive(),
     analysis: analysisSchema.nullable(),
     latest_price: z
         .object({

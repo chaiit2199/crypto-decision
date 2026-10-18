@@ -1,8 +1,12 @@
 import Config
 
 # Start collection in dev; MARKET_SYNC_ENABLED=false opts out at runtime.
-# Runtime assembles market/Jev queues and Cron independently. Prices use Poller every 30s.
-config :crypto_decision_lab, :sync_enabled, true
+# Runtime assembles market/Jev queues and Cron independently. The price poller uses the interval below.
+config :crypto_decision_lab,
+  sync_enabled: true,
+  price_poll_interval_ms: 60_000,
+  analysis_interval_seconds: 120
+
 config :crypto_decision_lab, Oban, repo: CryptoDecisionLab.Repo
 
 # Development connection, following the same layout as core_api/config/dev.exs.
@@ -24,7 +28,7 @@ config :crypto_decision_lab, CryptoDecisionLabWeb.Endpoint,
   watchers: []
 
 # Jev and its Oban queue are configured together in runtime.exs.
-# Start with ../../scripts/dev-api to load the local .env.jev opt-in.
+# Runtime reads the root .env.jev automatically in development, including mix phx.server.
 
 config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime

@@ -29,7 +29,7 @@ const REASON_LABELS: Record<string, string> = {
     authentication_failed: "Jev từ chối API key (401). Cần cập nhật key ở backend.",
     access_denied: "Tài khoản chưa có quyền truy cập Jev.",
     quota_exhausted: "Tài khoản Jev đã hết quota hoặc cần kiểm tra billing.",
-    missing_api_key: "Backend chưa cấu hình API key Jev.",
+    missing_api_key: "Lần phân tích trước chưa có API key Jev; chờ kết quả mới sau khi cập nhật cấu hình.",
     rate_limited: "Jev đang giới hạn lượt gọi; hệ thống tạm dừng và sẽ thử lại.",
     upstream_unavailable: "Jev tạm thời không sẵn sàng.",
     transport_error: "Không kết nối được Jev; hệ thống sẽ thử ở kỳ tiếp theo.",
@@ -47,6 +47,7 @@ const REASON_LABELS: Record<string, string> = {
 
 export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
     const analysis = market?.analysis;
+    const intervalMinutes = market ? market.analysis_interval_seconds / 60 : null;
     const stale = analysis && (analysis.freshness === "stale" || now >= Date.parse(analysis.valid_until));
     let notice: string | null = null;
 
@@ -55,7 +56,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
     } else if (!market.analysis_enabled) {
         notice = "Phân tích Jev đang tắt.";
     } else if (!analysis) {
-        notice = "Đang chờ lần phân tích Jev đầu tiên; lịch chạy mỗi 5 phút.";
+        notice = `Đang chờ lần phân tích Jev đầu tiên; lịch chạy mỗi ${intervalMinutes} phút.`;
     } else if (analysis.status !== "ready") {
         notice = REASON_LABELS[analysis.reason ?? ""] ?? "Chưa có kết quả phân tích khả dụng.";
     }
@@ -64,7 +65,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
         <section className="market-analysis" aria-label="Phân tích Jev">
             <header className="market-analysis__header">
                 <h3>Phân tích Jev · {market?.symbol ?? "Chưa có thị trường"}</h3>
-                <span>Mỗi 5 phút · Chỉ báo 1H</span>
+                <span>{intervalMinutes === null ? "Chỉ báo 1H" : `Mỗi ${intervalMinutes} phút · Chỉ báo 1H`}</span>
             </header>
             {notice && <p className="market-analysis__notice" role="status">{notice}</p>}
             {analysis && (

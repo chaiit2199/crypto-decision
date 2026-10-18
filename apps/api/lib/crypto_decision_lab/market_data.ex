@@ -202,6 +202,7 @@ defmodule CryptoDecisionLab.MarketData do
 
     Map.merge(fields(symbol), %{
       analysis_enabled: Decisions.enabled?(),
+      analysis_interval_seconds: Decisions.interval_seconds(),
       analysis: analyses[symbol.id],
       latest_price: fields(price),
       ticker_stats: fields(ticker),
@@ -213,8 +214,12 @@ defmodule CryptoDecisionLab.MarketData do
   @spec analysis(String.t()) :: {:ok, map(), map()} | {:error, atom()}
   def analysis(symbol) do
     with {:ok, record} <- find_symbol(symbol) do
-      {:ok, %{enabled: Decisions.enabled?(), analysis: Decisions.latest([record.id])[record.id]},
-       %{}}
+      {:ok,
+       %{
+         enabled: Decisions.enabled?(),
+         interval_seconds: Decisions.interval_seconds(),
+         analysis: Decisions.latest([record.id])[record.id]
+       }, %{}}
     end
   end
 

@@ -109,7 +109,11 @@ defmodule CryptoDecisionLab.MarketData.Sync do
         # Shared deadline survives process restarts and prevents duplicate node polls.
         Collector.update(%{
           next_poll_at:
-            DateTime.from_unix!((DateTime.to_unix(now) + 30) * 1_000_000, :microsecond)
+            DateTime.add(
+              now,
+              Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms),
+              :millisecond
+            )
         })
 
         result

@@ -1,5 +1,5 @@
 defmodule CryptoDecisionLab.Decisions do
-  @moduledoc "Five-minute research analysis. Reads never trigger paid provider calls."
+  @moduledoc "Research analysis on configured UTC slots. Reads never trigger paid provider calls."
   import Ecto.Query
   require Logger
   alias CryptoDecisionLab.{Repo, MarketData, TechnicalAnalysis}
@@ -10,10 +10,31 @@ defmodule CryptoDecisionLab.Decisions do
   @spec enabled?() :: boolean()
   def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
 
+  @doc "Research interval in seconds; whole-minute slots match the Cron dispatcher."
+  @spec interval_seconds() :: pos_integer()
+  def interval_seconds do
+    interval = Application.fetch_env!(:crypto_decision_lab, :analysis_interval_seconds)
+
+    if is_integer(interval) and interval >= 60 and rem(interval, 60) == 0 do
+      interval
+    else
+      raise ArgumentError, "analysis_interval_seconds must be a positive multiple of 60"
+    end
+  end
+
+  @doc "Cron checks each minute but only dispatches in the first minute of the configured slot."
+  @spec enqueue_due() :: {:ok, non_neg_integer()} | {:error, term()}
+  def enqueue_due do
+    if rem(DateTime.to_unix(Collector.now()), interval_seconds()) < 60,
+      do: enqueue_all(),
+      else: {:ok, 0}
+  end
+
   @spec enqueue_all() :: {:ok, non_neg_integer()} | {:error, term()}
   def enqueue_all do
     if enabled?() do
-      slot = div(DateTime.to_unix(Collector.now()), 300) * 300
+      interval = interval_seconds()
+      slot = div(DateTime.to_unix(Collector.now()), interval) * interval
 
       Repo.transaction(fn ->
         MarketData.Sync.active_symbols()
@@ -40,7 +61,8 @@ defmodule CryptoDecisionLab.Decisions do
       not enabled?() ->
         {:ok, :disabled}
 
-      rem(unix_slot, 300) != 0 or DateTime.diff(now, slot) not in 0..299 ->
+      rem(unix_slot, interval_seconds()) != 0 or
+          DateTime.diff(now, slot) not in 0..(interval_seconds() - 1) ->
         {:ok, :expired}
 
       true ->
@@ -71,7 +93,7 @@ defmodule CryptoDecisionLab.Decisions do
         requested_model: config[:model],
         configuration_version: @version,
         analyzed_at: now,
-        valid_until: DateTime.add(slot, 300),
+        valid_until: DateTime.add(slot, interval_seconds()),
         risk_result: %{mode: "research_only", execution_allowed: false}
       }
 
@@ -128,9 +150,10 @@ defmodule CryptoDecisionLab.Decisions do
   defp available(now) do
     case Repo.query!("SELECT blocked_until, last_error FROM jev_provider_states WHERE id = 1").rows do
       [[%NaiveDateTime{} = until, reason]] ->
-        if NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt,
-          do: {:blocked, reason},
-          else: :ok
+        if NaiveDateTime.compare(until, DateTime.to_naive(now)) == :gt and
+             not (reason == "missing_api_key" and JevProvider.configured?()),
+           do: {:blocked, reason},
+           else: :ok
 
       _ ->
         :ok

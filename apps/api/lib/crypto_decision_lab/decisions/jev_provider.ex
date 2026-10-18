@@ -8,11 +8,18 @@ defmodule CryptoDecisionLab.Decisions.JevProvider do
     "volatility" => ~w(ELEVATED NORMAL)
   }
 
+  @doc "Whether a non-empty local credential is configured; does not assert upstream validity."
+  @spec configured?() :: boolean()
+  def configured? do
+    key = Application.get_env(:crypto_decision_lab, :jev, [])[:api_key]
+    is_binary(key) and String.trim(key) != ""
+  end
+
   @impl true
   def analyze(features) do
     config = Application.fetch_env!(:crypto_decision_lab, :jev)
 
-    if config[:api_key] in [nil, ""] do
+    if not configured?() do
       {:error, "missing_api_key", 900}
     else
       options = [

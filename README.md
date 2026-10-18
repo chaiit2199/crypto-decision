@@ -35,8 +35,10 @@ If a knowledge decision remains WAIT, inspect `risk_result.reason`: imports have
 
 ## Chạy local với Jev
 
-Từ thư mục gốc, chạy `./scripts/dev-api`. Script nạp `.env`, sau đó `.env.jev` trước khi chạy Phoenix. Trong `.env.jev`, đặt `JEV_ENABLED=true`, `TYPESAFE_API_KEY` và `JEV_MODEL`; giữ file ngoài Git. Các biến Jev đã export từ shell được ưu tiên. `JEV_ENABLED=true ./scripts/dev-api` tắt Jev cho lần chạy đó.
+Trong `.env.jev` ở thư mục gốc, đặt `JEV_ENABLED=true`, `TYPESAFE_API_KEY` và tùy chọn `JEV_MODEL`; giữ file ngoài Git. Chạy `mix phx.server` từ `apps/api`: runtime development tự đọc file này. Các biến Jev đã export từ shell được ưu tiên; `JEV_ENABLED=false mix phx.server` tắt Jev cho lần chạy đó. Có thể chọn file khác bằng `JEV_ENV_FILE`. Chỉ hỗ trợ assignment một dòng, dấu nháy và comment, không chạy shell hay nội suy biến.
 
-`mix phx.server` không tự đọc các file `.env`. Đổi cấu hình runtime cần dừng/khởi động lại backend. `GET /api/markets/BTCUSDT/analysis` trả `data.enabled` để kiểm tra trạng thái thực tế; sau khi bật, Cron xếp lịch phân tích mỗi 5 phút.
+`./scripts/dev-api` từ root vẫn hỗ trợ nạp thêm `.env` trước khi chạy Phoenix. Production/test không tự đọc `.env.jev`. Đổi cấu hình runtime cần dừng/khởi động lại backend. `GET /api/markets/BTCUSDT/analysis` trả `data.enabled` để kiểm tra trạng thái thực tế; sau khi bật, dispatcher xếp lịch theo `analysis_interval_seconds` trong cấu hình môi trường.
 
 Jev trên dashboard hiện nhận feature giá/chỉ báo từ `Decisions`; chưa tự đọc `apps/api/trading-skills/`. Bộ 200 skills dùng schema riêng, có feature chưa được hỗ trợ và đều `unvalidated`. Trading Knowledge Engine có API thủ công riêng; bật `JEV_ENABLED` không tự tích hợp hay xác thực các strategy này.
+
+Lịch development nằm trong `apps/api/config/dev.exs`: `price_poll_interval_ms: 60_000` (giá mỗi phút), `analysis_interval_seconds: 120` (Jev mỗi 2 phút). Thay hai giá trị này rồi khởi động lại backend. `analysis_interval_seconds` phải là bội số dương của 60. UI nhận chu kỳ từ API. Lịch 24h statistics/metadata/candles giữ riêng; `.env.example` chỉ là file mẫu, không được tự nạp khi chạy.

@@ -1,10 +1,10 @@
 defmodule CryptoDecisionLab.Decisions.AnalysisWorker do
-  @moduledoc "Schedules five-minute research runs separately from market collection."
+  @moduledoc "Schedules configured UTC research slots separately from market collection."
   use Oban.Worker,
     queue: :analysis,
     max_attempts: 1,
     unique: [
-      period: 240,
+      period: 55,
       fields: [:worker, :args],
       states: [:available, :scheduled, :executing, :retryable, :completed]
     ]
@@ -16,7 +16,7 @@ defmodule CryptoDecisionLab.Decisions.AnalysisWorker do
     result =
       case args do
         %{"symbol_id" => id, "slot" => slot} -> Decisions.analyze(id, slot)
-        %{} -> Decisions.enqueue_all()
+        %{} -> Decisions.enqueue_due()
       end
 
     case result do

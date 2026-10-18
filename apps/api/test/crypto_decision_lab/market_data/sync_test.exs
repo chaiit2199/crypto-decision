@@ -204,4 +204,23 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     assert {:ok, :complete} = Sync.candles(symbol.id, :backfill)
     assert Repo.aggregate(Candle, :count) == 1001
   end
+
+  test "the shared price deadline follows the configured 60-second interval" do
+    previous = Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms)
+    Application.put_env(:crypto_decision_lab, :price_poll_interval_ms, 60_000)
+
+    on_exit(fn ->
+      Application.put_env(:crypto_decision_lab, :price_poll_interval_ms, previous)
+    end)
+
+    F.symbol()
+    F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
+    assert {:ok, 1} = Sync.poll()
+    Process.put(:now, DateTime.add(F.now(), 30))
+    assert {:ok, :not_due} = Sync.poll()
+    Process.put(:now, DateTime.add(F.now(), 60))
+    F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "101"}])])
+    assert {:ok, 1} = Sync.poll()
+    assert length(Process.get(:http_calls)) == 2
+  end
 end

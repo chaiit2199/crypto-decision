@@ -1,4 +1,4 @@
-# Jev: phân tích từng cặp mỗi 5 phút
+# Jev: phân tích từng cặp theo lịch môi trường
 
 Yêu cầu người dùng ngày 2026-10-17 mở rộng phạm vi sang phân tích Jev và thay lịch đề xuất 4H bằng Cron `*/5 * * * *` UTC. Lịch này độc lập với thu thập giá 30 giây. Không đặt lệnh thật.
 
@@ -6,7 +6,7 @@ Yêu cầu người dùng ngày 2026-10-17 mở rộng phạm vi sang phân tíc
 
 `TechnicalAnalysis` tính EMA20/50, RSI14 Wilder và return 1H/24H bằng Decimal từ 300 nến 1H liên tiếp đã đóng (SMA seed cho EMA, đủ warm-up cho EMA50). Giá hiện tại và rolling 24H là snapshot ở thời điểm phân tích, không dùng chúng để backtest quá khứ. Chưa triển khai MACD/ADX/ATR/EMA200, đa khung hoặc backtest; không mô tả chúng như input đã có.
 
-`Decisions` kiểm tra freshness, xây feature snapshot, gọi `DecisionProvider` / `JevProvider` bằng Req và lưu kết quả. `MockDecisionProvider` chỉ dùng trong kiểm thử. Oban `AnalysisWorker` điều phối một job/cặp/khoảng 5 phút; queue riêng không chặn đồng bộ thị trường. HTTP không tự retry: lần lỗi được lưu và kỳ sau thử lại, có cooldown chung khi upstream lỗi. GET từ dashboard chỉ đọc DB, không gọi Jev.
+`Decisions` kiểm tra freshness, xây feature snapshot, gọi `DecisionProvider` / `JevProvider` bằng Req và lưu kết quả. `MockDecisionProvider` chỉ dùng trong kiểm thử. Oban `AnalysisWorker` điều phối một job/cặp/slot theo `analysis_interval_seconds`; queue riêng không chặn đồng bộ thị trường. HTTP không tự retry: lần lỗi được lưu và kỳ sau thử lại, có cooldown chung khi upstream lỗi. GET từ dashboard chỉ đọc DB, không gọi Jev.
 
 Jev nhận các câu hỏi choice riêng cho xu hướng, động lượng và mức biến động. Ứng dụng tổng hợp BUY/SELL/WAIT bằng quy tắc phiên bản cố định; BUY/SELL là tín hiệu nghiên cứu, SELL không phải mở short. Không có vị thế, stop-loss, sizing hoặc chiến lược được kiểm chứng: risk result luôn ghi `research_only`, `execution_allowed=false`. Thiếu dữ liệu trả NO_DATA trước khi gọi nhà cung cấp. Confidence không phải xác suất giao dịch có lãi.
 
@@ -43,6 +43,12 @@ Runtime: `JEV_ENABLED`, `TYPESAFE_API_KEY`, `JEV_MODEL`; test luôn tắt schedu
 
 ## Chẩn đoán thông báo “Phân tích Jev đang tắt”
 
-UI hiển thị thông báo khi API trả `analysis_enabled=false`; đây là trạng thái cấu hình, không phải lỗi phản hồi TypeSafe. `runtime.exs` quyết định `enabled`, queue và Cron từ `JEV_ENABLED`. Không đặt một cờ `enabled: true` riêng trong `dev.exs`, vì runtime sẽ ghi đè nó. Chạy `./scripts/dev-api` từ root để nạp `.env`/`.env.jev` và khởi động backend; script không ghi key ra output. Khởi động lại tiến trình sau khi thay đổi cấu hình.
+UI hiển thị thông báo khi API trả `analysis_enabled=false`; đây là trạng thái cấu hình, không phải lỗi phản hồi TypeSafe. `runtime.exs` quyết định `enabled`, queue và Cron từ cùng một cấu hình. Development tự đọc ba biến `JEV_ENABLED`, `TYPESAFE_API_KEY`, `JEV_MODEL` trong `.env.jev` ở root khi chạy `mix phx.server`; biến môi trường đã export luôn được ưu tiên, kể cả `false` hoặc chuỗi rỗng. Có thể chọn file local khác bằng `JEV_ENV_FILE`. File chỉ hỗ trợ assignment một dòng, dấu nháy và comment; không thực thi shell hay nội suy biến. Production/test không đọc file này. Không key vẫn chạy được ở chế độ market-data-only. Script `./scripts/dev-api` vẫn hỗ trợ nạp cả `.env`. Khởi động lại tiến trình sau khi thay đổi cấu hình.
 
 Luồng tự động vẫn là `AnalysisWorker -> Decisions -> TechnicalAnalysis -> JevProvider`, chưa gọi `TradingKnowledge` và chưa import bộ 200 file `trading-skills`. Các rule chưa kiểm chứng không được tự coi là verified context.
+
+## Điều chỉnh lịch development và phục hồi key (2026-10-18)
+
+Theo yêu cầu mới, `dev.exs` đặt `price_poll_interval_ms: 60_000` và `analysis_interval_seconds: 120`. Đây là chu kỳ collector giá Binance và chu kỳ phân tích Jev; các endpoint GET vẫn chỉ đọc DB. Các môi trường khác giữ mặc định 30 giây/300 giây. Poller và deadline chống trùng giữa node phải dùng cùng chu kỳ giá. Cron đánh thức dispatcher mỗi phút; dispatcher chỉ xếp job trong phút đầu của slot cấu hình. Slot, kiểm tra job hết hạn và `valid_until` cùng lấy một giá trị cấu hình.
+
+API market bổ sung `analysis_interval_seconds` để UI hiển thị lịch thật, không hardcode 5 phút. `missing_api_key` trong một bản ghi phân tích mô tả lần chạy đó, không phải kiểm tra config hiện tại. Khi key được bổ sung, lần phân tích tiếp theo được bỏ qua cooldown thiếu key cũ; cooldown 401, quota và 429 vẫn có hiệu lực. Không xóa lịch sử lỗi hay gọi Jev từ GET.
