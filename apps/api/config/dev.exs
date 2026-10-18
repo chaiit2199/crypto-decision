@@ -23,5 +23,8 @@ config :crypto_decision_lab, CryptoDecisionLabWeb.Endpoint,
   debug_errors: false,
   watchers: []
 
+# Jev and its Oban queue are configured together in runtime.exs.
+# Start with ../../scripts/dev-api to load the local .env.jev opt-in.
+
 config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime

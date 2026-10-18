@@ -40,3 +40,9 @@ Runtime: `JEV_ENABLED`, `TYPESAFE_API_KEY`, `JEV_MODEL`; test luôn tắt schedu
 - Kiểm thử reference có nghiệm đóng cho chuỗi tăng đều và chuỗi luân phiên 100/101; tolerance `1e-9`. Chưa tuyên bố mọi kết quả trùng TradingView vì seed/history có thể khác. Công thức tham khảo: [EMA](https://www.tradingview.com/support/solutions/43000592270-exponential-moving-average/), [RSI](https://www.tradingview.com/support/solutions/43000502338-relative-strength-index-rsi/).
 - Price tối đa 90 giây, stats tối đa 600 giây, close cuối tối đa 3660 giây; không nhận future timestamps hoặc gaps. Chỉ lấy close trước clock trừ 5 giây. Cập nhật đánh giá 5 phút không tạo nến 5 phút: EMA/RSI chỉ thay đổi sau khi có nến 1H mới, giá/stats snapshot có thể đổi giữa các kỳ.
 - Chính sách tín hiệu v1: BULLISH + STRENGTHENING + NORMAL -> BUY; BEARISH + WEAKENING + NORMAL -> SELL; các trường hợp còn lại -> WAIT. Đây là tổng hợp nhãn nghiên cứu chưa backtest, không sử dụng confidence làm tỷ lệ thắng. Chưa có quyết định giao dịch có sizing/stop-loss.
+
+## Chẩn đoán thông báo “Phân tích Jev đang tắt”
+
+UI hiển thị thông báo khi API trả `analysis_enabled=false`; đây là trạng thái cấu hình, không phải lỗi phản hồi TypeSafe. `runtime.exs` quyết định `enabled`, queue và Cron từ `JEV_ENABLED`. Không đặt một cờ `enabled: true` riêng trong `dev.exs`, vì runtime sẽ ghi đè nó. Chạy `./scripts/dev-api` từ root để nạp `.env`/`.env.jev` và khởi động backend; script không ghi key ra output. Khởi động lại tiến trình sau khi thay đổi cấu hình.
+
+Luồng tự động vẫn là `AnalysisWorker -> Decisions -> TechnicalAnalysis -> JevProvider`, chưa gọi `TradingKnowledge` và chưa import bộ 200 file `trading-skills`. Các rule chưa kiểm chứng không được tự coi là verified context.

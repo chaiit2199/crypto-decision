@@ -69,4 +69,15 @@ defmodule CryptoDecisionLab.SyncConfigTest do
     cron = config[Oban][:plugins][Oban.Plugins.Cron][:crontab]
     assert cron == [{"*/5 * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}]
   end
+
+  test "Jev uses the exported credential and remains disabled without an explicit opt-in" do
+    refute config(:dev)[:jev][:enabled]
+    assert config(:dev)[:jev][:api_key] == nil
+    System.put_env("TYPESAFE_API_KEY", "synthetic-config-key")
+    System.put_env("JEV_ENABLED", "true")
+    assert config(:dev)[:jev][:enabled]
+    assert config(:dev)[:jev][:api_key] == "synthetic-config-key"
+    System.put_env("JEV_ENABLED", "false")
+    refute config(:dev)[:jev][:enabled]
+  end
 end

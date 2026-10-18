@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TASK_REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+# Explicit shell overrides take precedence over local Jev settings.
+TASK_JEV_ENABLED="${JEV_ENABLED-}"
+TASK_JEV_KEY="${TYPESAFE_API_KEY-}"
+TASK_JEV_MODEL="${JEV_MODEL-}"
+
+set -a
+for TASK_ENV_FILE in "$TASK_REPO_ROOT/.env" "$TASK_REPO_ROOT/.env.jev"; do
+    if [[ -f "$TASK_ENV_FILE" ]]; then
+        source "$TASK_ENV_FILE"
+    fi
+done
+set +a
+
+if [[ -n "$TASK_JEV_ENABLED" ]]; then export JEV_ENABLED="$TASK_JEV_ENABLED"; fi
+if [[ -n "$TASK_JEV_KEY" ]]; then export TYPESAFE_API_KEY="$TASK_JEV_KEY"; fi
+if [[ -n "$TASK_JEV_MODEL" ]]; then export JEV_MODEL="$TASK_JEV_MODEL"; fi
+unset TASK_JEV_KEY
+
+if [[ "${JEV_ENABLED:-false}" == "true" && -z "${TYPESAFE_API_KEY:-}" ]]; then
+    printf '%s\n' 'Jev is enabled but TYPESAFE_API_KEY is missing. Set it in .env.jev or your shell.' >&2
+    exit 1
+fi
+
+cd "$TASK_REPO_ROOT/apps/api"
+exec mix phx.server

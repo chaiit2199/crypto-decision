@@ -1,0 +1,77 @@
+{
+    "schema_version": "1.0.0",
+    "strategy_id": "bearish_trend_exit",
+    "version": 1,
+    "name": "Bearish structure exit",
+    "description": "Tests exiting an existing holding in bearish structure; never opens a short.",
+    "action": "SELL",
+    "market": "binance_spot_usdt",
+    "regimes": [
+        "downtrend"
+    ],
+    "timeframe": "1h",
+    "feature_contract": "hourly-v1",
+    "entry_conditions": [
+        {
+            "id": "fast_below_slow",
+            "left": {
+                "feature": "ema20"
+            },
+            "operator": "lt",
+            "right": {
+                "feature": "ema50"
+            }
+        }
+    ],
+    "confirmation_conditions": [
+        {
+            "id": "price_below_fast",
+            "left": {
+                "feature": "close"
+            },
+            "operator": "lt",
+            "right": {
+                "feature": "ema20"
+            }
+        }
+    ],
+    "invalidation_conditions": [
+        {
+            "id": "strong_hour_rebound",
+            "left": {
+                "feature": "return_1h_percent"
+            },
+            "operator": "gt",
+            "right": {
+                "value": "3"
+            }
+        }
+    ],
+    "risk_constraints": {
+        "max_risk_fraction": "0.01",
+        "max_allocation_fraction": "0.1",
+        "stop_loss_fraction": "0.02",
+        "take_profit_fraction": "0.04",
+        "min_reward_risk": "2",
+        "min_quote_volume": "1000000",
+        "max_absolute_return_1h_percent": "5",
+        "max_data_age_seconds": 3660
+    },
+    "provenance": {
+        "kind": "research_hypothesis",
+        "author": "Crypto Decision Lab example library",
+        "source": "Repository-authored illustrative hypothesis; no empirical source or performance claim.",
+        "created_at": "2026-10-18T00:00:00Z",
+        "rationale": "Tests exiting an existing holding in bearish structure; never opens a short.",
+        "limitations": [
+            "Untested; no estimated win rate or probability of profit.",
+            "Requires point-in-time features, regime labels, liquidity and cost observations.",
+            "Thresholds are examples, not validated recommendations."
+        ]
+    },
+    "validation": {
+        "status": "unvalidated",
+        "eligibility": "research_only",
+        "evidence_ids": []
+    }
+}

@@ -1,0 +1,252 @@
+{
+  "ema20_gt_ema50": {
+    "feature": "ema20",
+    "operator": "gt_feature",
+    "compare_to": "ema50"
+  },
+  "ema20_lt_ema50": {
+    "feature": "ema20",
+    "operator": "lt_feature",
+    "compare_to": "ema50"
+  },
+  "ema20_cross_above_ema50": {
+    "feature": "ema20",
+    "operator": "cross_above_feature",
+    "compare_to": "ema50"
+  },
+  "ema20_cross_below_ema50": {
+    "feature": "ema20",
+    "operator": "cross_below_feature",
+    "compare_to": "ema50"
+  },
+  "close_near_ema20": {
+    "feature": "close_to_ema20_abs_pct",
+    "operator": "lte",
+    "compare_to": 1.0
+  },
+  "close_above_ema50": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "ema50"
+  },
+  "close_below_ema50": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "ema50"
+  },
+  "close_above_ema20": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "ema20"
+  },
+  "close_below_ema20": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "ema20"
+  },
+  "close_cross_above_ema200": {
+    "feature": "close",
+    "operator": "cross_above_feature",
+    "compare_to": "ema200"
+  },
+  "close_cross_below_ema200": {
+    "feature": "close",
+    "operator": "cross_below_feature",
+    "compare_to": "ema200"
+  },
+  "volume_ratio_gt_1_2": {
+    "feature": "volume_ratio20",
+    "operator": "gt",
+    "compare_to": 1.2
+  },
+  "volume_ratio_gt_1_5": {
+    "feature": "volume_ratio20",
+    "operator": "gt",
+    "compare_to": 1.5
+  },
+  "adx_gt_20": {
+    "feature": "adx14",
+    "operator": "gt",
+    "compare_to": 20
+  },
+  "adx_gt_25": {
+    "feature": "adx14",
+    "operator": "gt",
+    "compare_to": 25
+  },
+  "adx_lt_20": {
+    "feature": "adx14",
+    "operator": "lt",
+    "compare_to": 20
+  },
+  "close_above_donchian20_upper_prev": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "donchian20_high_previous"
+  },
+  "close_below_donchian20_lower_prev": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "donchian20_low_previous"
+  },
+  "close_above_resistance_prev": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "resistance20_previous"
+  },
+  "close_below_support_prev": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "support20_previous"
+  },
+  "bb_width_rising": {
+    "feature": "bb_width20",
+    "operator": "gt_feature",
+    "compare_to": "bb_width20_previous"
+  },
+  "close_above_bb_upper": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "bb_upper20_2"
+  },
+  "close_below_bb_lower": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "bb_lower20_2"
+  },
+  "low_below_bb_lower": {
+    "feature": "low",
+    "operator": "lt_feature",
+    "compare_to": "bb_lower20_2"
+  },
+  "high_above_bb_upper": {
+    "feature": "high",
+    "operator": "gt_feature",
+    "compare_to": "bb_upper20_2"
+  },
+  "close_above_bb_lower": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "bb_lower20_2"
+  },
+  "close_below_bb_upper": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "bb_upper20_2"
+  },
+  "rsi_lt_35": {
+    "feature": "rsi14",
+    "operator": "lt",
+    "compare_to": 35
+  },
+  "rsi_gt_65": {
+    "feature": "rsi14",
+    "operator": "gt",
+    "compare_to": 65
+  },
+  "rsi_cross_above_30": {
+    "feature": "rsi14",
+    "operator": "cross_above",
+    "compare_to": 30
+  },
+  "rsi_cross_below_70": {
+    "feature": "rsi14",
+    "operator": "cross_below",
+    "compare_to": 70
+  },
+  "close_above_prev_close": {
+    "feature": "close",
+    "operator": "gt_feature",
+    "compare_to": "previous_close"
+  },
+  "close_below_prev_close": {
+    "feature": "close",
+    "operator": "lt_feature",
+    "compare_to": "previous_close"
+  },
+  "macd_hist_cross_above_zero": {
+    "feature": "macd_hist_12_26_9",
+    "operator": "cross_above",
+    "compare_to": 0
+  },
+  "macd_hist_cross_below_zero": {
+    "feature": "macd_hist_12_26_9",
+    "operator": "cross_below",
+    "compare_to": 0
+  },
+  "rsi_gt_50": {
+    "feature": "rsi14",
+    "operator": "gt",
+    "compare_to": 50
+  },
+  "rsi_lt_50": {
+    "feature": "rsi14",
+    "operator": "lt",
+    "compare_to": 50
+  },
+  "obv_gt_obv_sma20": {
+    "feature": "obv",
+    "operator": "gt_feature",
+    "compare_to": "obv_sma20"
+  },
+  "obv_lt_obv_sma20": {
+    "feature": "obv",
+    "operator": "lt_feature",
+    "compare_to": "obv_sma20"
+  },
+  "htf_bullish": {
+    "feature": "htf_regime",
+    "operator": "eq",
+    "compare_to": "bull_trend"
+  },
+  "htf_bearish": {
+    "feature": "htf_regime",
+    "operator": "eq",
+    "compare_to": "bear_trend"
+  },
+  "bullish_rejection": {
+    "feature": "bullish_rejection",
+    "operator": "eq",
+    "compare_to": true
+  },
+  "bearish_rejection": {
+    "feature": "bearish_rejection",
+    "operator": "eq",
+    "compare_to": true
+  },
+  "structure_hl": {
+    "feature": "last_confirmed_swing_structure",
+    "operator": "eq",
+    "compare_to": "higher_low"
+  },
+  "structure_lh": {
+    "feature": "last_confirmed_swing_structure",
+    "operator": "eq",
+    "compare_to": "lower_high"
+  },
+  "macd_hist_positive": {
+    "feature": "macd_hist_12_26_9",
+    "operator": "gt",
+    "compare_to": 0
+  },
+  "macd_hist_negative": {
+    "feature": "macd_hist_12_26_9",
+    "operator": "lt",
+    "compare_to": 0
+  },
+  "relative_strength_btc_positive": {
+    "feature": "return_minus_btc_20bars_pct",
+    "operator": "gt",
+    "compare_to": 0
+  },
+  "relative_strength_btc_negative": {
+    "feature": "return_minus_btc_20bars_pct",
+    "operator": "lt",
+    "compare_to": 0
+  },
+  "atr_pct_lt_4": {
+    "feature": "atr_pct14",
+    "operator": "lt",
+    "compare_to": 4
+  }
+}

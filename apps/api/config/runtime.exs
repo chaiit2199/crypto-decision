@@ -66,12 +66,12 @@ config :crypto_decision_lab,
   binance_base_url: System.get_env("BINANCE_BASE_URL", "https://data-api.binance.vision/api/v3")
 
 # Analysis is independently enabled; tests never call the paid provider automatically.
-jev_enabled = not is_test and System.get_env("JEV_ENABLED", "false") == "true"
+jev_enabled = not is_test and System.get_env("JEV_ENABLED", "true") == "true"
 
 config :crypto_decision_lab, :jev,
   enabled: jev_enabled,
   api_key:
-    "apikey_26348e6614ce2444c44a810858bc7a2ebe4_455c0c46b6e2a3fc00023bc52a227a51bababd76fce302ef4e54fa62734f30fe",
+    "e6614ce2444c44a810858bc7a2ebe4_455c0c46b6e2a3fc00023bc52a227a51bababd76fce302ef4e54fa62734f30fe",
   model: System.get_env("JEV_MODEL", "jev-latest")
 
 market_cron =

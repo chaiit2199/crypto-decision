@@ -1,0 +1,486 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:crypto-decision-lab:strategy:1.0.0",
+    "title": "Trading strategy v1",
+    "type": "object",
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "const": "1.0.0"
+        },
+        "strategy_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+        },
+        "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+        },
+        "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+        },
+        "action": {
+            "type": "string",
+            "enum": [
+                "BUY",
+                "SELL"
+            ]
+        },
+        "market": {
+            "type": "string",
+            "const": "binance_spot_usdt"
+        },
+        "regimes": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "uptrend",
+                    "downtrend",
+                    "range"
+                ]
+            },
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true
+        },
+        "timeframe": {
+            "type": "string",
+            "const": "1h"
+        },
+        "feature_contract": {
+            "type": "string",
+            "const": "hourly-v1"
+        },
+        "entry_conditions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+                    },
+                    "left": {
+                        "type": "object",
+                        "properties": {
+                            "feature": {
+                                "type": "string",
+                                "enum": [
+                                    "close",
+                                    "ema20",
+                                    "ema50",
+                                    "rsi14",
+                                    "return_1h_percent",
+                                    "return_24h_percent"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "feature"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": [
+                            "gt",
+                            "gte",
+                            "lt",
+                            "lte",
+                            "eq"
+                        ]
+                    },
+                    "right": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "feature": {
+                                        "type": "string",
+                                        "enum": [
+                                            "close",
+                                            "ema20",
+                                            "ema50",
+                                            "rsi14",
+                                            "return_1h_percent",
+                                            "return_24h_percent"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "feature"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ],
+                                "additionalProperties": false
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "left",
+                    "operator",
+                    "right"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 16
+        },
+        "confirmation_conditions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+                    },
+                    "left": {
+                        "type": "object",
+                        "properties": {
+                            "feature": {
+                                "type": "string",
+                                "enum": [
+                                    "close",
+                                    "ema20",
+                                    "ema50",
+                                    "rsi14",
+                                    "return_1h_percent",
+                                    "return_24h_percent"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "feature"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": [
+                            "gt",
+                            "gte",
+                            "lt",
+                            "lte",
+                            "eq"
+                        ]
+                    },
+                    "right": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "feature": {
+                                        "type": "string",
+                                        "enum": [
+                                            "close",
+                                            "ema20",
+                                            "ema50",
+                                            "rsi14",
+                                            "return_1h_percent",
+                                            "return_24h_percent"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "feature"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ],
+                                "additionalProperties": false
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "left",
+                    "operator",
+                    "right"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 16
+        },
+        "invalidation_conditions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+                    },
+                    "left": {
+                        "type": "object",
+                        "properties": {
+                            "feature": {
+                                "type": "string",
+                                "enum": [
+                                    "close",
+                                    "ema20",
+                                    "ema50",
+                                    "rsi14",
+                                    "return_1h_percent",
+                                    "return_24h_percent"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "feature"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": [
+                            "gt",
+                            "gte",
+                            "lt",
+                            "lte",
+                            "eq"
+                        ]
+                    },
+                    "right": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "feature": {
+                                        "type": "string",
+                                        "enum": [
+                                            "close",
+                                            "ema20",
+                                            "ema50",
+                                            "rsi14",
+                                            "return_1h_percent",
+                                            "return_24h_percent"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "feature"
+                                ],
+                                "additionalProperties": false
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                                    }
+                                },
+                                "required": [
+                                    "value"
+                                ],
+                                "additionalProperties": false
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "left",
+                    "operator",
+                    "right"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 16
+        },
+        "risk_constraints": {
+            "type": "object",
+            "properties": {
+                "max_risk_fraction": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "max_allocation_fraction": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "stop_loss_fraction": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "take_profit_fraction": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "min_reward_risk": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "min_quote_volume": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "max_absolute_return_1h_percent": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,18})?$"
+                },
+                "max_data_age_seconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3660
+                }
+            },
+            "required": [
+                "max_risk_fraction",
+                "max_allocation_fraction",
+                "stop_loss_fraction",
+                "take_profit_fraction",
+                "min_reward_risk",
+                "min_quote_volume",
+                "max_absolute_return_1h_percent",
+                "max_data_age_seconds"
+            ],
+            "additionalProperties": false
+        },
+        "provenance": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "research_hypothesis",
+                        "trader_observation",
+                        "published_rule"
+                    ]
+                },
+                "author": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                },
+                "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "Z$"
+                },
+                "rationale": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1500
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                }
+            },
+            "required": [
+                "kind",
+                "author",
+                "source",
+                "created_at",
+                "rationale",
+                "limitations"
+            ],
+            "additionalProperties": false
+        },
+        "validation": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "unvalidated",
+                        "tested",
+                        "validated",
+                        "rejected"
+                    ]
+                },
+                "eligibility": {
+                    "type": "string",
+                    "enum": [
+                        "research_only",
+                        "eligible",
+                        "disabled"
+                    ]
+                },
+                "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "minItems": 0,
+                    "maxItems": 20,
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "status",
+                "eligibility",
+                "evidence_ids"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "schema_version",
+        "strategy_id",
+        "version",
+        "name",
+        "description",
+        "action",
+        "market",
+        "regimes",
+        "timeframe",
+        "feature_contract",
+        "entry_conditions",
+        "confirmation_conditions",
+        "invalidation_conditions",
+        "risk_constraints",
+        "provenance",
+        "validation"
+    ],
+    "additionalProperties": false
+}

@@ -1,0 +1,77 @@
+{
+    "schema_version": "1.0.0",
+    "strategy_id": "daily_drawdown_exit",
+    "version": 1,
+    "name": "Daily drawdown exit",
+    "description": "Tests exiting a holding after a negative day; fixed thresholds ignore asset-specific volatility.",
+    "action": "SELL",
+    "market": "binance_spot_usdt",
+    "regimes": [
+        "downtrend"
+    ],
+    "timeframe": "1h",
+    "feature_contract": "hourly-v1",
+    "entry_conditions": [
+        {
+            "id": "negative_day",
+            "left": {
+                "feature": "return_24h_percent"
+            },
+            "operator": "lt",
+            "right": {
+                "value": "-4"
+            }
+        }
+    ],
+    "confirmation_conditions": [
+        {
+            "id": "below_slow",
+            "left": {
+                "feature": "close"
+            },
+            "operator": "lt",
+            "right": {
+                "feature": "ema50"
+            }
+        }
+    ],
+    "invalidation_conditions": [
+        {
+            "id": "hour_reversal",
+            "left": {
+                "feature": "return_1h_percent"
+            },
+            "operator": "gt",
+            "right": {
+                "value": "4"
+            }
+        }
+    ],
+    "risk_constraints": {
+        "max_risk_fraction": "0.01",
+        "max_allocation_fraction": "0.1",
+        "stop_loss_fraction": "0.02",
+        "take_profit_fraction": "0.04",
+        "min_reward_risk": "2",
+        "min_quote_volume": "1000000",
+        "max_absolute_return_1h_percent": "5",
+        "max_data_age_seconds": 3660
+    },
+    "provenance": {
+        "kind": "research_hypothesis",
+        "author": "Crypto Decision Lab example library",
+        "source": "Repository-authored illustrative hypothesis; no empirical source or performance claim.",
+        "created_at": "2026-10-18T00:00:00Z",
+        "rationale": "Tests exiting a holding after a negative day; fixed thresholds ignore asset-specific volatility.",
+        "limitations": [
+            "Untested; no estimated win rate or probability of profit.",
+            "Requires point-in-time features, regime labels, liquidity and cost observations.",
+            "Thresholds are examples, not validated recommendations."
+        ]
+    },
+    "validation": {
+        "status": "unvalidated",
+        "eligibility": "research_only",
+        "evidence_ids": []
+    }
+}

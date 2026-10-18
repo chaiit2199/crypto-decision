@@ -1,0 +1,79 @@
+{
+  "id": "TS-16-09",
+  "version": "1.0.0",
+  "title": "RSI overbought fade — relative strength",
+  "category": "mean_reversion",
+  "direction": "short",
+  "market": "spot",
+  "timeframes": [
+    "1h",
+    "4h"
+  ],
+  "market_regime_context": "range",
+  "hypothesis": "Evaluate a short-side rsi overbought fade setup with relative performance against BTC. This is a candidate rule, not verified alpha.",
+  "entry_conditions": {
+    "all": [
+      {
+        "feature": "rsi14",
+        "operator": "cross_below",
+        "value": 70
+      },
+      {
+        "feature": "close",
+        "operator": "lt_feature",
+        "other_feature": "previous_close"
+      },
+      {
+        "feature": "adx14",
+        "operator": "lt",
+        "value": 20
+      }
+    ]
+  },
+  "confirmation_conditions": {
+    "all": [
+      {
+        "feature": "return_minus_btc_20bars_pct",
+        "operator": "lt",
+        "value": 0
+      }
+    ]
+  },
+  "invalidation": {
+    "any": [
+      {
+        "feature": "close",
+        "operator": "gt_feature",
+        "other_feature": "ema50"
+      }
+    ]
+  },
+  "trade_plan_template": {
+    "entry": "next_candle_open_after_signal",
+    "stop_loss": "last_confirmed_swing_or_1_5_atr",
+    "take_profit": "minimum_2R_if_market_structure_allows",
+    "minimum_rr": 2.0,
+    "max_risk_per_trade_pct": 0.5,
+    "entry_requires_confirmation": true
+  },
+  "evidence": {
+    "status": "unvalidated",
+    "source_type": "synthesized_rule_hypothesis",
+    "backtested": false,
+    "sample_size": 0,
+    "win_rate": null,
+    "profit_factor": null,
+    "out_of_sample_sharpe": null
+  },
+  "limitations": [
+    "Not a proven edge",
+    "Spot short signals are exit/avoid-long observations, not executable short orders",
+    "Unavailable features imply NO_DATA, not false"
+  ],
+  "tags": [
+    "mean_reversion",
+    "range",
+    "relative_strength",
+    "candidate"
+  ]
+}

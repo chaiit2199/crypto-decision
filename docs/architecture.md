@@ -1,5 +1,7 @@
 # Crypto Decision Lab — Phase 1
 
+This document records the Phase 1 foundation. Later user-requested extensions are documented in [Jev integration](jev-integration.md) and [Trading Knowledge Engine](trading-knowledge-engine.md).
+
 ## Phạm vi
 
 Ứng dụng cá nhân thu thập dữ liệu Binance Spot và cung cấp REST API cho phân tích sau này. Phase 1 chưa có Jev, tín hiệu giao dịch, giao dịch thật, backtesting, paper trading hoặc dashboard Next.js.

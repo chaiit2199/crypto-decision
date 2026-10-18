@@ -1,0 +1,79 @@
+{
+  "id": "TS-19-03",
+  "version": "1.0.0",
+  "title": "OBV price confirmation — momentum confirmed",
+  "category": "volume_price",
+  "direction": "long",
+  "market": "spot",
+  "timeframes": [
+    "1h",
+    "4h"
+  ],
+  "market_regime_context": "bull_trend",
+  "hypothesis": "Evaluate a long-side obv price confirmation setup with momentum alignment. This is a candidate rule, not verified alpha.",
+  "entry_conditions": {
+    "all": [
+      {
+        "feature": "obv",
+        "operator": "gt_feature",
+        "other_feature": "obv_sma20"
+      },
+      {
+        "feature": "close",
+        "operator": "gt_feature",
+        "other_feature": "ema20"
+      },
+      {
+        "feature": "volume_ratio20",
+        "operator": "gt",
+        "value": 1.2
+      }
+    ]
+  },
+  "confirmation_conditions": {
+    "all": [
+      {
+        "feature": "rsi14",
+        "operator": "gt",
+        "value": 50
+      }
+    ]
+  },
+  "invalidation": {
+    "any": [
+      {
+        "feature": "close",
+        "operator": "lt_feature",
+        "other_feature": "ema50"
+      }
+    ]
+  },
+  "trade_plan_template": {
+    "entry": "next_candle_open_after_signal",
+    "stop_loss": "last_confirmed_swing_or_1_5_atr",
+    "take_profit": "minimum_2R_if_market_structure_allows",
+    "minimum_rr": 2.0,
+    "max_risk_per_trade_pct": 0.5,
+    "entry_requires_confirmation": true
+  },
+  "evidence": {
+    "status": "unvalidated",
+    "source_type": "synthesized_rule_hypothesis",
+    "backtested": false,
+    "sample_size": 0,
+    "win_rate": null,
+    "profit_factor": null,
+    "out_of_sample_sharpe": null
+  },
+  "limitations": [
+    "Not a proven edge",
+    "Spot short signals are exit/avoid-long observations, not executable short orders",
+    "Unavailable features imply NO_DATA, not false"
+  ],
+  "tags": [
+    "volume_price",
+    "bull_trend",
+    "momentum_confirmed",
+    "candidate"
+  ]
+}
