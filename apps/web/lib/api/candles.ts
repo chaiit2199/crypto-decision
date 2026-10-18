@@ -3,13 +3,15 @@ import "server-only";
 import { candlesSchema } from "./types";
 import type { CandlesResult, Timeframe } from "./types";
 
-export async function getMarketCandles(symbol: string, timeframe: Timeframe): Promise<CandlesResult> {
+export async function getMarketCandles(symbol: string, exchange: string, timeframe: Timeframe): Promise<CandlesResult> {
     const url = new URL(
         `/api/markets/${encodeURIComponent(symbol)}/candles`,
         process.env.API_BASE_URL ?? "http://127.0.0.1:4000",
     );
+    url.searchParams.set("exchange", exchange);
     url.searchParams.set("timeframe", timeframe);
-    url.searchParams.set("limit", "120");
+    const limit = exchange === "coinbase" ? { "1h": "120", "4h": "60", "1d": "10" }[timeframe] : "120";
+    url.searchParams.set("limit", limit);
 
     try {
         const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8_000) });

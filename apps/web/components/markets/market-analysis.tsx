@@ -1,6 +1,7 @@
 import type { Market } from "@/lib/api/types";
 import { formatIndicator } from "@/lib/format/market";
 import { formatChartTime } from "@/lib/format/chart-time";
+import { ANSWER_EXPLANATIONS, SIGNAL_EXPLANATIONS } from "@/lib/markets/analysis-explanation";
 
 type MarketAnalysisProps = {
     market: Market | undefined;
@@ -19,11 +20,28 @@ const CHOICE_LABELS: Record<string, string> = {
 };
 
 const SIGNAL_LABELS = {
-    BUY: "BUY · Theo dõi cơ hội mua",
-    SELL: "SELL · Theo dõi áp lực bán",
+    BUY: "BUY · Tín hiệu theo dõi mua",
+    SELL: "SELL · Tín hiệu theo dõi bán",
     WAIT: "WAIT · Chờ tín hiệu rõ hơn",
     NO_DATA: "NO_DATA · Chưa đủ dữ liệu",
 };
+
+const ANSWER_NAMES: Record<string, string> = { trend: "Xu hướng", momentum: "Động lượng", volatility: "Biến động" };
+
+const INDICATORS = [
+    { key: "ema20", name: "EMA20", description: "Giá trung bình có trọng số 20 giờ; phản ánh xu hướng ngắn hạn." },
+    { key: "ema50", name: "EMA50", description: "Xu hướng trung hạn trong cửa sổ 50 nến 1H." },
+    { key: "ema200", name: "EMA200", description: "Mốc xu hướng dài hơn, tính trên nến 1H." },
+    { key: "rsi14", name: "RSI14", description: "Động lượng 0–100; trên 70/dưới 30 là vùng cực trị, không tự chứng minh đảo chiều." },
+    { key: "macd", name: "MACD (12/26)", description: "Chênh lệch EMA12 và EMA26; dương khi EMA nhanh nằm trên EMA chậm." },
+    { key: "macd_signal", name: "MACD Signal (9)", description: "Đường EMA9 của MACD, dùng so sánh động lượng." },
+    { key: "macd_histogram", name: "MACD Histogram", description: "MACD trừ Signal; thể hiện chênh lệch động lượng." },
+    { key: "atr14", name: "ATR14", description: "Biên độ dao động trung bình 14 nến, theo đơn vị giá; không chỉ hướng tăng/giảm." },
+    { key: "adx14", name: "ADX14", description: "Sức mạnh xu hướng 0–100; không cho biết hướng tăng hay giảm." },
+    { key: "relative_volume20", name: "Khối lượng tương đối (20)", description: "Volume nến cuối chia trung bình 20 nến trước; trên 1 là cao hơn mức trung bình." },
+    { key: "return_1h_percent", name: "Biến động 1H (%)", description: "Mức thay đổi giữa hai giá đóng cửa 1H gần nhất." },
+    { key: "return_24h_percent", name: "Biến động 24H (%)", description: "Thay đổi giữa giá đóng cửa hiện tại và 24 nến 1H trước." },
+] as const;
 
 const REASON_LABELS: Record<string, string> = {
     authentication_failed: "Jev từ chối API key (401). Cần cập nhật key ở backend.",
@@ -49,10 +67,14 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
     const analysis = market?.analysis;
     const intervalMinutes = market ? market.analysis_interval_seconds / 60 : null;
     const stale = analysis && (analysis.freshness === "stale" || now >= Date.parse(analysis.valid_until));
+    const active = Boolean(market?.analysis_enabled && !stale && analysis?.status === "ready");
+    const signal = active && analysis ? analysis.signal : "WAIT";
     let notice: string | null = null;
 
     if (!market) {
-        notice = "Không có cặp Spot USDT khả dụng để phân tích.";
+        notice = "Không có cặp giao dịch khả dụng để phân tích.";
+    } else if (market.analysis_unavailable_reason === "gold_history_unavailable") {
+        notice = "Hiện chỉ có giá vàng tham chiếu. Chưa có lịch sử nến vàng đã xác minh để tính chỉ báo và phân tích Jev.";
     } else if (!market.analysis_enabled) {
         notice = "Phân tích Jev đang tắt.";
     } else if (!analysis) {
@@ -76,35 +98,36 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
             )}
             {analysis?.status === "ready" && (
                 <>
-                    <p className="market-analysis__signal" data-signal={stale || !market?.analysis_enabled ? "WAIT" : analysis.signal}>
-                        {stale || !market?.analysis_enabled ? "Kết quả cũ · " : ""}
-                        {SIGNAL_LABELS[analysis.signal]}
+                    <p className="market-analysis__signal" data-signal={signal}>
+                        {!active ? "WAIT · Kết quả cũ, chờ đánh giá mới" : SIGNAL_LABELS[signal]}
                     </p>
+                    {active && <p className="market-analysis__explanation">{SIGNAL_EXPLANATIONS[signal]}</p>}
                     <dl className="market-analysis__answers">
                         {Object.entries(analysis.answers).map(([name, answer]) => answer && (
                             <div key={name}>
-                                <dt>{CHOICE_LABELS[answer.choice]}</dt>
-                                <dd>Độ tin cậy mô hình: {Math.round(answer.confidence * 100)}%</dd>
+                                <dt>{ANSWER_NAMES[name]} · {CHOICE_LABELS[answer.choice]}</dt>
+                                <dd>{ANSWER_EXPLANATIONS[answer.choice]}</dd>
+                                <dd className="market-analysis__confidence">Mức tự tin phân loại của mô hình: {Math.round(answer.confidence * 100)}%</dd>
                             </div>
                         ))}
                     </dl>
                 </>
             )}
             {analysis?.features.rsi14 !== undefined && (
-                <dl className="market-analysis__features">
-                    <div>
-                        <dt>EMA20 · USDT</dt>
-                        <dd title={analysis.features.ema20}>{formatIndicator(analysis.features.ema20)}</dd>
-                    </div>
-                    <div>
-                        <dt>EMA50 · USDT</dt>
-                        <dd title={analysis.features.ema50}>{formatIndicator(analysis.features.ema50)}</dd>
-                    </div>
-                    <div>
-                        <dt>RSI14</dt>
-                        <dd title={analysis.features.rsi14}>{formatIndicator(analysis.features.rsi14)}</dd>
-                    </div>
-                </dl>
+                <>
+                    <p className="market-analysis__time">Chỉ báo từ nến 1H đã đóng · Đơn vị giá: {market?.quote_asset}</p>
+                    <dl className="market-analysis__features">
+                        {INDICATORS.map(({ key, name, description }) => (
+                            <div key={key}>
+                                <dt>{name}</dt>
+                                <dd className="market-analysis__value" title={analysis.features[key] ?? undefined}>
+                                    {formatIndicator(analysis.features[key])}
+                                </dd>
+                                <dd>{description}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </>
             )}
             {analysis?.features.last_close_time && (
                 <p className="market-analysis__time">
@@ -113,6 +136,8 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                 </p>
             )}
             <p className="market-analysis__caption">
+                Nhận định dựa trên trạng thái thị trường hiện tại, không bảo đảm hướng giá tương lai.
+                Diễn giải tiếng Việt được tạo theo quy tắc từ nhãn Jev và các chỉ báo đã tính.
                 Tín hiệu nghiên cứu, chưa kiểm chứng bằng backtest. Độ tin cậy mô hình không phải xác suất có lãi.
                 SELL thể hiện áp lực bán, không phải lệnh mở short. Ứng dụng không đặt lệnh.
             </p>

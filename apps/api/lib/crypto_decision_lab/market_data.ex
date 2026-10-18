@@ -12,6 +12,7 @@ defmodule CryptoDecisionLab.MarketData do
     Candle,
     SyncState,
     Collector,
+    CollectorState,
     Sync,
     SyncWorker,
     Integrity
@@ -80,15 +81,15 @@ defmodule CryptoDecisionLab.MarketData do
   end
 
   @spec get_market(String.t()) :: {:ok, map(), map()} | {:error, atom()}
-  def get_market(symbol) do
-    with {:ok, record} <- find_symbol(symbol) do
+  def get_market(symbol, params \\ %{}) do
+    with {:ok, record} <- find_symbol(symbol, Map.get(params, "exchange", "binance")) do
       {:ok, market(record, snapshots([record])), %{}}
     end
   end
 
   @spec candles(String.t(), map()) :: {:ok, [map()], map()} | {:error, atom()}
   def candles(symbol, params) do
-    with {:ok, record} <- find_symbol(symbol),
+    with {:ok, record} <- find_symbol(symbol, Map.get(params, "exchange", "binance")),
          {:ok, range} <- candle_range(params) do
       rows =
         Repo.all(
@@ -174,9 +175,11 @@ defmodule CryptoDecisionLab.MarketData do
     end
   end
 
-  defp find_symbol(value) when is_binary(value) and byte_size(value) <= 30 do
+  defp find_symbol(value, exchange)
+       when is_binary(value) and byte_size(value) <= 30 and
+              exchange in ["binance", "coinbase", "gold_api"] do
     if Regex.match?(~r/^[A-Z0-9]+$/, value) do
-      case Repo.get_by(Symbol, exchange: "binance", symbol: value) do
+      case Repo.get_by(Symbol, exchange: exchange, symbol: value) do
         nil -> {:error, :not_found}
         record -> {:ok, record}
       end
@@ -185,7 +188,7 @@ defmodule CryptoDecisionLab.MarketData do
     end
   end
 
-  defp find_symbol(_), do: {:error, :invalid_symbol}
+  defp find_symbol(_, _), do: {:error, :invalid_symbol}
 
   defp snapshots(symbols) do
     ids = Enum.map(symbols, & &1.id)
@@ -202,18 +205,22 @@ defmodule CryptoDecisionLab.MarketData do
 
     Map.merge(fields(symbol), %{
       analysis_enabled: Decisions.enabled?(),
+      analysis_unavailable_reason:
+        if(symbol.exchange == "gold_api", do: "gold_history_unavailable", else: nil),
+      price_max_age_seconds: price_max_age_seconds(),
       analysis_interval_seconds: Decisions.interval_seconds(),
       analysis: analyses[symbol.id],
       latest_price: fields(price),
       ticker_stats: fields(ticker),
-      price_freshness: freshness(price && price.fetched_at, 90),
+      price_freshness:
+        freshness(price && (price.data_at || price.fetched_at), price_max_age_seconds()),
       stats_freshness: freshness(ticker && ticker.data_at, 600)
     })
   end
 
   @spec analysis(String.t()) :: {:ok, map(), map()} | {:error, atom()}
-  def analysis(symbol) do
-    with {:ok, record} <- find_symbol(symbol) do
+  def analysis(symbol, params \\ %{}) do
+    with {:ok, record} <- find_symbol(symbol, Map.get(params, "exchange", "binance")) do
       {:ok,
        %{
          enabled: Decisions.enabled?(),
@@ -245,7 +252,7 @@ defmodule CryptoDecisionLab.MarketData do
       is_nil(price) or is_nil(stats) ->
         {:error, :missing_snapshots}
 
-      DateTime.diff(now, price.fetched_at) not in 0..90 ->
+      DateTime.diff(now, price.data_at || price.fetched_at) not in 0..price_max_age_seconds() ->
         {:error, :stale_price}
 
       DateTime.diff(now, stats.data_at) not in 0..600 or
@@ -267,23 +274,33 @@ defmodule CryptoDecisionLab.MarketData do
         {:ok,
          %{
            candles: candles,
-           price_at: price.fetched_at,
+           price_at: price.data_at || price.fetched_at,
            snapshot: %{
              "symbol" => symbol.symbol,
-             "exchange" => "binance",
+             "exchange" => symbol.exchange,
              "market" => "spot",
              "as_of" => DateTime.to_iso8601(now),
              "price" => Decimal.to_string(price.price, :normal),
-             "price_at" => DateTime.to_iso8601(price.fetched_at),
+             "price_at" => DateTime.to_iso8601(price.data_at || price.fetched_at),
              "stats_at" => DateTime.to_iso8601(stats.data_at),
              "change_24h_percent" => Decimal.to_string(stats.price_change_percent, :normal),
              "high_24h" => Decimal.to_string(stats.high_price, :normal),
              "low_24h" => Decimal.to_string(stats.low_price, :normal),
-             "quote_volume_24h" => Decimal.to_string(stats.quote_volume, :normal)
+             "quote_volume_24h" =>
+               if(stats.quote_volume,
+                 do: Decimal.to_string(stats.quote_volume, :normal),
+                 else: nil
+               ),
+             "base_volume_24h" => Decimal.to_string(stats.base_volume, :normal),
+             "quote_asset" => symbol.quote_asset
            }
          }}
     end
   end
+
+  @doc "Allow one collection interval plus 60 seconds of delivery delay."
+  def price_max_age_seconds,
+    do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000) + 60
 
   def freshness(nil, _), do: %{status: "missing", age_seconds: nil}
 
@@ -305,7 +322,11 @@ defmodule CryptoDecisionLab.MarketData do
     jobs =
       Repo.all(
         from j in Oban.Job,
-          where: j.worker == "CryptoDecisionLab.MarketData.SyncWorker",
+          where:
+            j.worker in [
+              "CryptoDecisionLab.MarketData.SyncWorker",
+              "CryptoDecisionLab.MarketData.SourceWorker"
+            ],
           group_by: j.state,
           select: {j.state, count(j.id)}
       )
@@ -314,11 +335,17 @@ defmodule CryptoDecisionLab.MarketData do
     {:ok,
      %{
        collector: fields(Collector.state()),
+       sources: Map.new(Repo.all(CollectorState), &{&1.key, fields(&1)}),
+       price_poll_interval_seconds:
+         div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000),
        synchronization: states,
        jobs: jobs,
        enabled: Application.get_env(:crypto_decision_lab, :sync_enabled, false),
        configured_assets: Repo.aggregate(Asset, :count),
-       active_symbols: length(Sync.active_symbols())
+       active_symbols:
+         length(Sync.active_symbols()) +
+           length(CryptoDecisionLab.MarketData.SourceSync.active_symbols("coinbase")) +
+           length(CryptoDecisionLab.MarketData.SourceSync.active_symbols("gold_api"))
      }, %{}}
   end
 

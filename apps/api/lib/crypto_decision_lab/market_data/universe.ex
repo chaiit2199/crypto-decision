@@ -44,8 +44,7 @@ defmodule CryptoDecisionLab.MarketData.Universe do
      [
        {"DOGE", "Dogecoin"},
        {"SHIB", "Shiba Inu"},
-       {"PEPE", "Pepe"},
-       {"MEW", "cat in a dogs world"}
+       {"PEPE", "Pepe"}
      ]}
   ]
   def assets do

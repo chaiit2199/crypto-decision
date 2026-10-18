@@ -32,7 +32,7 @@ defmodule CryptoDecisionLab.SyncConfigTest do
   test "development starts the collector, queue and Cron by default" do
     config = config(:dev)
     assert config[:sync_enabled]
-    assert config[Oban][:queues] == [market: 1]
+    assert config[Oban][:queues] == [market: 1, sources: 1]
     assert Keyword.has_key?(config[Oban][:plugins], Oban.Plugins.Cron)
   end
 
@@ -49,7 +49,7 @@ defmodule CryptoDecisionLab.SyncConfigTest do
     assert config(:prod)[Oban][:queues] == false
     System.put_env("MARKET_SYNC_ENABLED", "true")
     assert config(:prod)[:sync_enabled]
-    assert config(:prod)[Oban][:queues] == [market: 1]
+    assert config(:prod)[Oban][:queues] == [market: 1, sources: 1]
   end
 
   test "tests never start collection even with development environment exported" do
@@ -85,11 +85,11 @@ defmodule CryptoDecisionLab.SyncConfigTest do
   end
 
   test "development intervals come from dev.exs while other environments retain their defaults" do
-    assert config(:dev)[:price_poll_interval_ms] == 60_000
-    assert config(:dev)[:analysis_interval_seconds] == 120
+    assert config(:dev)[:price_poll_interval_ms] == 120_000
+    assert config(:dev)[:analysis_interval_seconds] == 300
 
     for env <- [:test, :prod] do
-      assert config(env)[:price_poll_interval_ms] == 30_000
+      assert config(env)[:price_poll_interval_ms] == 120_000
       assert config(env)[:analysis_interval_seconds] == 300
     end
   end

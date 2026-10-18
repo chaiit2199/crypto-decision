@@ -20,6 +20,15 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
       true ->
         closes = Enum.map(candles, & &1.close)
 
+        macd_values =
+          Enum.zip(Enum.drop(ema_series(closes, 12), 14), ema_series(closes, 26))
+          |> Enum.map(fn {fast, slow} -> D.sub(fast, slow) end)
+
+        macd = List.last(macd_values)
+        macd_signal = ema(macd_values, 9)
+        {atr, adx} = volatility_trend(candles, 14)
+        volume_average = candles |> Enum.slice(-21, 20) |> Enum.map(& &1.base_volume) |> average()
+
         {:ok,
          %{
            "timeframe" => "1h",
@@ -28,6 +37,17 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
            "close" => decimal(last.close),
            "ema20" => decimal(ema(closes, 20)),
            "ema50" => decimal(ema(closes, 50)),
+           "ema200" => decimal(ema(closes, 200)),
+           "macd" => decimal(macd),
+           "macd_signal" => decimal(macd_signal),
+           "macd_histogram" => decimal(D.sub(macd, macd_signal)),
+           "atr14" => decimal(atr),
+           "adx14" => decimal(adx),
+           "relative_volume20" =>
+             if(D.equal?(volume_average, 0),
+               do: nil,
+               else: decimal(D.div(last.base_volume, volume_average))
+             ),
            "rsi14" => decimal(rsi(closes, 14)),
            "return_1h_percent" => decimal(return_percent(last.close, Enum.at(closes, -2))),
            "return_24h_percent" => decimal(return_percent(last.close, Enum.at(closes, -25)))
@@ -56,12 +76,66 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
   end
 
   defp ema(values, period) do
+    values |> ema_series(period) |> List.last()
+  end
+
+  defp ema_series(values, period) do
     {seed, rest} = Enum.split(values, period)
     alpha = D.div(2, period + 1)
 
-    Enum.reduce(rest, average(seed), fn value, previous ->
-      D.add(previous, D.mult(alpha, D.sub(value, previous)))
-    end)
+    [
+      average(seed)
+      | Enum.scan(rest, average(seed), fn value, previous ->
+          D.add(previous, D.mult(alpha, D.sub(value, previous)))
+        end)
+    ]
+  end
+
+  defp volatility_trend(candles, period) do
+    movements =
+      Enum.chunk_every(candles, 2, 1, :discard)
+      |> Enum.map(fn [previous, current] ->
+        tr =
+          D.max(
+            D.sub(current.high, current.low),
+            D.max(
+              D.abs(D.sub(current.high, previous.close)),
+              D.abs(D.sub(current.low, previous.close))
+            )
+          )
+
+        up = D.sub(current.high, previous.high)
+        down = D.sub(previous.low, current.low)
+        plus = if D.positive?(up) and D.compare(up, down) == :gt, do: up, else: D.new(0)
+        minus = if D.positive?(down) and D.compare(down, up) == :gt, do: down, else: D.new(0)
+        {tr, plus, minus}
+      end)
+
+    tr = movements |> Enum.map(&elem(&1, 0)) |> wilder(period)
+    plus = movements |> Enum.map(&elem(&1, 1)) |> wilder(period)
+    minus = movements |> Enum.map(&elem(&1, 2)) |> wilder(period)
+
+    dx =
+      Enum.zip(plus, minus)
+      |> Enum.map(fn {p, m} ->
+        # TR cancels in DX = 100 * abs(DI+ - DI-) / (DI+ + DI-).
+        if D.equal?(D.add(p, m), 0),
+          do: D.new(0),
+          else: D.mult(100, D.div(D.abs(D.sub(p, m)), D.add(p, m)))
+      end)
+
+    {List.last(tr), dx |> wilder(period) |> List.last()}
+  end
+
+  defp wilder(values, period) do
+    {seed, rest} = Enum.split(values, period)
+
+    [
+      average(seed)
+      | Enum.scan(rest, average(seed), fn value, previous ->
+          D.div(D.add(D.mult(previous, period - 1), value), period)
+        end)
+    ]
   end
 
   defp rsi(values, period) do

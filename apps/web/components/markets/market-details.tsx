@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import type { Asset, Timeframe } from "@/lib/api/types";
-import { formatDecimal, formatTime, priceStatus } from "@/lib/format/market";
+import { formatDecimal, formatPercentage, formatTime, priceStatus } from "@/lib/format/market";
+import { selectedMarket } from "@/lib/markets/selected-market";
+import type { QuoteAsset } from "@/lib/markets/selected-market";
 
 import { MarketHistory } from "./market-history";
 import { MarketAnalysis } from "./market-analysis";
@@ -11,14 +13,15 @@ import { PriceFlash } from "./price-flash";
 
 type MarketDetailsProps = {
     asset: Asset;
+    quoteAsset: QuoteAsset;
     now: number;
 };
 
 const TIMEFRAMES: Timeframe[] = ["1h", "4h", "1d"];
 
-export function MarketDetails({ asset, now }: MarketDetailsProps) {
+export function MarketDetails({ asset, quoteAsset, now }: MarketDetailsProps) {
     const [timeframe, setTimeframe] = useState<Timeframe>("1h");
-    const market = asset.markets.find((item) => item.enabled && item.trading_status === "TRADING");
+    const market = selectedMarket(asset, quoteAsset);
     const stats = market?.ticker_stats;
     const freshness = priceStatus(market, now);
     const statsStale =
@@ -28,19 +31,21 @@ export function MarketDetails({ asset, now }: MarketDetailsProps) {
         <section id="market-details" className="market-details" aria-labelledby="market-details-title">
             <header className="market-details__header">
                 <div>
-                    <p className="market-monitor__eyebrow">CHI TIẾT TÀI SẢN · BINANCE SPOT</p>
+                    <p className="market-monitor__eyebrow">
+                        CHI TIẾT TÀI SẢN{market && ` · ${market.exchange.toUpperCase()}`}
+                    </p>
                     <h2 id="market-details-title">
                         {asset.symbol} <span>{asset.name}</span>
                     </h2>
-                    <p className="market-details__pair">{market?.symbol ?? "Chưa có cặp Spot USDT khả dụng"}</p>
+                    <p className="market-details__pair">{market?.symbol ?? `Chưa có cặp ${quoteAsset} khả dụng`}</p>
                 </div>
                 <div className="market-details__quote" data-freshness={freshness}>
                     <strong>
                         <PriceFlash value={market?.latest_price?.price} />
                     </strong>
-                    <span> USDT</span>
+                    <span> {quoteAsset}</span>
                     <p>
-                        {formatTime(market?.latest_price?.fetched_at)} · UTC+7
+                        {formatTime(market?.latest_price?.data_at ?? market?.latest_price?.fetched_at)} · UTC+7
                         {freshness === "stale" && " · Dữ liệu giá cũ"}
                         {freshness === "missing" && " · Chưa có giá"}
                         {!asset.enabled && " · Tài sản đã tắt đồng bộ"}
@@ -50,28 +55,31 @@ export function MarketDetails({ asset, now }: MarketDetailsProps) {
             <dl className="market-details__stats">
                 <div>
                     <dt>Thay đổi 24h</dt>
-                    <dd>
-                        {formatDecimal(stats?.price_change_percent)}
+                    <dd title={stats?.price_change_percent}>
+                        {formatPercentage(stats?.price_change_percent)}
                         {stats && "%"}
                     </dd>
                 </div>
                 <div>
-                    <dt>Cao nhất 24h / USDT</dt>
+                    <dt>Cao nhất 24h / {quoteAsset}</dt>
                     <dd>{formatDecimal(stats?.high_price)}</dd>
                 </div>
                 <div>
-                    <dt>Thấp nhất 24h / USDT</dt>
+                    <dt>Thấp nhất 24h / {quoteAsset}</dt>
                     <dd>{formatDecimal(stats?.low_price)}</dd>
                 </div>
                 <div>
-                    <dt>Khối lượng 24h / USDT</dt>
-                    <dd>{formatDecimal(stats?.quote_volume)}</dd>
+                    <dt>Khối lượng 24h / {stats?.quote_volume == null ? asset.symbol : quoteAsset}</dt>
+                    <dd>{formatDecimal(stats?.quote_volume ?? stats?.base_volume)}</dd>
                 </div>
             </dl>
             {statsStale && <p className="market-chart__notice">Thống kê 24h đã cũ; đang chờ lần đồng bộ tiếp theo.</p>}
             {!stats && <p className="market-details__hint">Chưa có thống kê 24h.</p>}
             <MarketAnalysis market={market} now={now} />
-            {market ? (
+            {market?.exchange === "gold_api" && (
+                <p className="market-chart__empty">XAU/USD là giá vàng tham chiếu. Chưa có lịch sử nến vàng để vẽ biểu đồ và tính chỉ báo; nguồn lịch sử cần API key riêng.</p>
+            )}
+            {market && market.exchange !== "gold_api" && (
                 <>
                     <div className="market-details__chart-header">
                         <div>
@@ -92,13 +100,15 @@ export function MarketDetails({ asset, now }: MarketDetailsProps) {
                         </div>
                     </div>
                     <MarketHistory
-                        key={`${market.symbol}:${timeframe}`}
+                        key={`${market.exchange}:${market.symbol}:${timeframe}`}
                         symbol={market.symbol}
+                        exchange={market.exchange}
                         timeframe={timeframe}
                         snapshotPrice={market.latest_price?.price}
                     />
                 </>
-            ) : (
+            )}
+            {!market && (
                 <p className="market-chart__empty">Chưa có thị trường khả dụng để tải lịch sử của {asset.symbol}.</p>
             )}
         </section>

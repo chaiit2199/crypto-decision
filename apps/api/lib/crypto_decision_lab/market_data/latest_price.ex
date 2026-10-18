@@ -6,6 +6,7 @@ defmodule CryptoDecisionLab.MarketData.LatestPrice do
   schema "market_latest_prices" do
     field :market_symbol_id, :id, primary_key: true
     field :price, :decimal
+    field :data_at, :utc_datetime_usec
     field :fetched_at, :utc_datetime_usec
     field :updated_at, :utc_datetime_usec
   end

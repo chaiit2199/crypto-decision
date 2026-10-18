@@ -1,10 +1,16 @@
 import type { Market } from "@/lib/api/types";
 
 const indicatorFormat = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 8 });
+const percentageFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Rounded display only; preserve the original Decimal value in the response and tooltip. */
+export function formatPercentage(value: string | undefined): string {
+    return value === undefined ? "—" : percentageFormat.format(Number(value));
+}
 
 /** Display only; the original Decimal string remains available in the API and title. */
-export function formatIndicator(value: string | undefined): string {
-    if (value === undefined) {
+export function formatIndicator(value: string | null | undefined): string {
+    if (value == null) {
         return "—";
     }
 
@@ -12,8 +18,8 @@ export function formatIndicator(value: string | undefined): string {
 }
 
 /** Group digits without converting financial decimal strings through a float. */
-export function formatDecimal(value: string | undefined): string {
-    if (value === undefined) {
+export function formatDecimal(value: string | null | undefined): string {
+    if (value == null) {
         return "—";
     }
 
@@ -42,7 +48,7 @@ export function priceStatus(market: Market | undefined, now: number): "fresh" | 
         return "missing";
     }
 
-    if (now - Date.parse(market.latest_price.fetched_at) > 90_000) {
+    if (now - Date.parse(market.latest_price.data_at ?? market.latest_price.fetched_at) > market.price_max_age_seconds * 1000) {
         return "stale";
     }
 

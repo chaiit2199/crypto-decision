@@ -4,6 +4,8 @@ Personal Binance Spot research application: Phoenix/Ecto/PostgreSQL backend in `
 
 The new [Trading Knowledge Engine](docs/trading-knowledge-engine.md) adds versioned JSON hypotheses, deterministic matching, reviewed Jev context, independent risk policy, paired evaluation and audit records. The [ten example strategies](apps/api/priv/knowledge/README.md) are all unvalidated.
 
+Xem [chọn cặp USD/USDT và thêm/bỏ mã](docs/market-selection.md). USD mặc định dùng Coinbase Exchange, USDT dùng Binance Spot, vàng XAU/USD lấy giá tham chiếu Gold API. Xem [flow.md](flow.md) cho luồng lưu DB → chỉ báo → Jev và giới hạn lịch sử vàng.
+
 ## Backend setup
 
 Use the Elixir/OTP and PostgreSQL environment described in [database configuration](docs/database-runtime.md). Keep development and test databases separate. Export database connection variables in your shell; do not commit credentials. `TYPESAFE_API_KEY` is optional for market-data-only operation. Disable schedulers while doing manual research setup:
@@ -41,4 +43,21 @@ Trong `.env.jev` ở thư mục gốc, đặt `JEV_ENABLED=true`, `TYPESAFE_API_
 
 Jev trên dashboard hiện nhận feature giá/chỉ báo từ `Decisions`; chưa tự đọc `apps/api/trading-skills/`. Bộ 200 skills dùng schema riêng, có feature chưa được hỗ trợ và đều `unvalidated`. Trading Knowledge Engine có API thủ công riêng; bật `JEV_ENABLED` không tự tích hợp hay xác thực các strategy này.
 
-Lịch development nằm trong `apps/api/config/dev.exs`: `price_poll_interval_ms: 60_000` (giá mỗi phút), `analysis_interval_seconds: 120` (Jev mỗi 2 phút). Thay hai giá trị này rồi khởi động lại backend. `analysis_interval_seconds` phải là bội số dương của 60. UI nhận chu kỳ từ API. Lịch 24h statistics/metadata/candles giữ riêng; `.env.example` chỉ là file mẫu, không được tự nạp khi chạy.
+Lịch development nằm trong `apps/api/config/dev.exs`: `price_poll_interval_ms: 120_000` (giá mỗi 2 phút), `analysis_interval_seconds: 300` (Jev mỗi 5 phút). Thay hai giá trị này rồi khởi động lại backend. `analysis_interval_seconds` phải là bội số dương của 60. UI nhận chu kỳ từ API. Lịch 24h statistics/metadata/candles giữ riêng; `.env.example` chỉ là file mẫu, không được tự nạp khi chạy.
+
+
+## Khởi tạo dữ liệu USD và vàng
+
+Chạy migration bổ sung trước khi khởi động lại backend:
+
+```sh
+cd apps/api
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix ecto.migrate
+mix phx.server
+```
+
+Scheduler nguồn USD/vàng tự chạy khi `MARKET_SYNC_ENABLED=true`. Public Coinbase và Gold API không cần key cho các endpoint hiện dùng. Metadata chỉ thêm cặp USD thực sự được Coinbase công bố; mã không được hỗ trợ giữ trạng thái không khả dụng. Không thay USDT bằng USD theo tỷ lệ 1:1. Có thể đồng bộ thủ công bằng `MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix market.sources`.
+
+Snapshot XAU/USD có timestamp nguồn; history/OHLC vàng chưa được kết nối do cần API key riêng. Vì vậy vàng chưa có chỉ báo/Jev. Coinbase ban đầu chỉ lấy tối đa 300 nến 1H gần nhất, giữ lại nến đã đóng hợp lệ; không tự dựng các giờ thiếu. Nguồn này chưa triển khai backfill 3 năm. Khối lượng Coinbase hiển thị theo tài sản gốc, vì không có quote volume trong endpoint stats.
+
+Nếu cặp USD vừa đăng ký lại thành UNAVAILABLE hoặc vẫn thấy lịch cũ, kiểm tra còn backend `mix run --no-halt` cũ dùng chung DB hay không. Dừng đúng tiến trình cũ trước khi chạy lại `mix market.sources`; không khởi động nhiều phiên backend khác phiên bản cùng DB.

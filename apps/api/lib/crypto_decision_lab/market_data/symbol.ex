@@ -6,6 +6,7 @@ defmodule CryptoDecisionLab.MarketData.Symbol do
     field :asset_id, :id
     field :exchange, :string
     field :symbol, :string
+    field :provider_symbol, :string
     field :base_asset, :string
     field :quote_asset, :string
     field :trading_status, :string

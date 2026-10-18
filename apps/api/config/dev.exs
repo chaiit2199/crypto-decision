@@ -4,8 +4,8 @@ import Config
 # Runtime assembles market/Jev queues and Cron independently. The price poller uses the interval below.
 config :crypto_decision_lab,
   sync_enabled: true,
-  price_poll_interval_ms: 60_000,
-  analysis_interval_seconds: 120
+  price_poll_interval_ms: 120_000,
+  analysis_interval_seconds: 300
 
 config :crypto_decision_lab, Oban, repo: CryptoDecisionLab.Repo
 

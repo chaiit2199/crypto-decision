@@ -19,10 +19,11 @@ export async function refreshMarketMonitor(signal: AbortSignal): Promise<MarketM
 
 export async function refreshMarketCandles(
     symbol: string,
+    exchange: string,
     timeframe: Timeframe,
     signal: AbortSignal,
 ): Promise<CandlesResult> {
-    const query = new URLSearchParams({ symbol, timeframe });
+    const query = new URLSearchParams({ symbol, exchange, timeframe });
 
     try {
         const response = await fetch(`/api/market-candles?${query}`, {

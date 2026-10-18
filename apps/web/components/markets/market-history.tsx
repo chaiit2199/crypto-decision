@@ -11,11 +11,12 @@ import { CandleChart } from "./candle-chart";
 
 type MarketHistoryProps = {
     symbol: string;
+    exchange: string;
     timeframe: Timeframe;
     snapshotPrice: string | undefined;
 };
 
-export function MarketHistory({ symbol, timeframe, snapshotPrice }: MarketHistoryProps) {
+export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: MarketHistoryProps) {
     const [data, setData] = useState<CandlesData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [retry, setRetry] = useState(0);
@@ -25,7 +26,7 @@ export function MarketHistory({ symbol, timeframe, snapshotPrice }: MarketHistor
         let timer: ReturnType<typeof setTimeout>;
 
         async function refresh() {
-            const result = await refreshMarketCandles(symbol, timeframe, controller.signal);
+            const result = await refreshMarketCandles(symbol, exchange, timeframe, controller.signal);
 
             if (controller.signal.aborted) {
                 return;
@@ -46,7 +47,7 @@ export function MarketHistory({ symbol, timeframe, snapshotPrice }: MarketHistor
             clearTimeout(timer);
             controller.abort();
         };
-    }, [symbol, timeframe, retry]);
+    }, [symbol, exchange, timeframe, retry]);
 
     function handleRetry() {
         setError(null);

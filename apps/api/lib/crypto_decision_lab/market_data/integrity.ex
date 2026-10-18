@@ -110,7 +110,7 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
             close: List.last(group).close,
             high: Enum.reduce(group, hd(group).high, &Decimal.max(&1.high, &2)),
             low: Enum.reduce(group, hd(group).low, &Decimal.min(&1.low, &2)),
-            trade_count: Enum.sum(Enum.map(group, & &1.trade_count))
+            trade_count: sum_known(Enum.map(group, & &1.trade_count), &Enum.sum/1)
           })
 
         aggregated =
@@ -118,7 +118,9 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
             Map.put(
               result,
               field,
-              Enum.reduce(group, Decimal.new(0), &Decimal.add(Map.fetch!(&1, field), &2))
+              sum_known(Enum.map(group, &Map.fetch!(&1, field)), fn values ->
+                Enum.reduce(values, Decimal.new(0), &Decimal.add/2)
+              end)
             )
           end)
 
@@ -132,4 +134,6 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
       error -> error
     end
   end
+
+  defp sum_known(values, sum), do: if(Enum.any?(values, &is_nil/1), do: nil, else: sum.(values))
 end

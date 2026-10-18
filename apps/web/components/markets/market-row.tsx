@@ -1,10 +1,13 @@
 import type { Asset } from "@/lib/api/types";
-import { formatDecimal, formatTime, priceStatus } from "@/lib/format/market";
+import { formatDecimal, formatPercentage, formatTime, priceStatus } from "@/lib/format/market";
+import { selectedMarket } from "@/lib/markets/selected-market";
+import type { QuoteAsset } from "@/lib/markets/selected-market";
 
 import { PriceFlash } from "./price-flash";
 
 type MarketRowProps = {
     asset: Asset;
+    quoteAsset: QuoteAsset;
     now: number;
     metadataReady: boolean;
     selected: boolean;
@@ -17,8 +20,8 @@ const STATUS_LABEL = {
     missing: "Chờ dữ liệu",
 };
 
-export function MarketRow({ asset, now, metadataReady, selected, onSelect }: MarketRowProps) {
-    const market = asset.markets.find((item) => item.enabled && item.trading_status === "TRADING");
+export function MarketRow({ asset, quoteAsset, now, metadataReady, selected, onSelect }: MarketRowProps) {
+    const market = selectedMarket(asset, quoteAsset);
     const freshness = priceStatus(market, now);
     const change = market?.ticker_stats?.price_change_percent;
     const negative = change?.startsWith("-");
@@ -26,7 +29,7 @@ export function MarketRow({ asset, now, metadataReady, selected, onSelect }: Mar
 
     if (change !== undefined) {
         const sign = negative ? "" : "+";
-        changeLabel = `${sign}${formatDecimal(change)}%`;
+        changeLabel = `${sign}${formatPercentage(change)}%`;
     }
 
     const statsStale =
@@ -37,7 +40,7 @@ export function MarketRow({ asset, now, metadataReady, selected, onSelect }: Mar
     if (!asset.enabled) {
         label = "Đã tắt";
     } else if (!market && metadataReady) {
-        label = "Không có Spot USDT";
+        label = `Chưa có cặp ${quoteAsset}`;
     }
 
     return (
@@ -66,20 +69,21 @@ export function MarketRow({ asset, now, metadataReady, selected, onSelect }: Mar
                 <PriceFlash value={market?.latest_price?.price} />
             </td>
             <td className="market-row__number">
-                <span className="market-row__change" data-direction={negative ? "down" : "up"}>
+                <span className="market-row__change" data-direction={negative ? "down" : "up"} title={change}>
                     {changeLabel}
                 </span>
                 {market?.ticker_stats && statsStale && <span className="market-row__old">Số liệu cũ</span>}
             </td>
             <td className="market-row__number market-row__volume">
-                {formatDecimal(market?.ticker_stats?.quote_volume)}
+                {formatDecimal(market?.ticker_stats?.quote_volume ?? market?.ticker_stats?.base_volume)}
+                {market?.ticker_stats && <span className="market-row__old">{market.ticker_stats.quote_volume == null ? asset.symbol : quoteAsset}</span>}
             </td>
             <td>
                 <span className="market-row__status" data-status={freshness}>
                     {label}
                 </span>
-                <time className="market-row__time" dateTime={market?.latest_price?.fetched_at}>
-                    {formatTime(market?.latest_price?.fetched_at)}
+                <time className="market-row__time" dateTime={(market?.latest_price?.data_at ?? market?.latest_price?.fetched_at)}>
+                    {formatTime((market?.latest_price?.data_at ?? market?.latest_price?.fetched_at))}
                 </time>
             </td>
         </tr>

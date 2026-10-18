@@ -34,11 +34,7 @@ defmodule CryptoDecisionLab.MarketData.Candle do
       :high,
       :low,
       :close,
-      :base_volume,
-      :quote_volume,
-      :taker_buy_base_volume,
-      :taker_buy_quote_volume,
-      :trade_count
+      :base_volume
     ])
   end
 end

@@ -4,8 +4,12 @@ defmodule CryptoDecisionLabWeb.MarketController do
   alias CryptoDecisionLabWeb.Response
 
   def index(conn, params), do: Response.send(conn, MarketData.list_markets(params))
-  def show(conn, %{"symbol" => symbol}), do: Response.send(conn, MarketData.get_market(symbol))
-  def analysis(conn, %{"symbol" => symbol}), do: Response.send(conn, MarketData.analysis(symbol))
+
+  def show(conn, %{"symbol" => symbol} = params),
+    do: Response.send(conn, MarketData.get_market(symbol, params))
+
+  def analysis(conn, %{"symbol" => symbol} = params),
+    do: Response.send(conn, MarketData.analysis(symbol, params))
 
   def candles(conn, %{"symbol" => symbol} = params),
     do: Response.send(conn, MarketData.candles(symbol, params))

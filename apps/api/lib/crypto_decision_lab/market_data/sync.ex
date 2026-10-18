@@ -24,7 +24,8 @@ defmodule CryptoDecisionLab.MarketData.Sync do
       from s in Symbol,
         join: a in Asset,
         on: s.asset_id == a.id,
-        where: s.enabled and a.enabled and s.trading_status == "TRADING",
+        where:
+          s.exchange == "binance" and s.enabled and a.enabled and s.trading_status == "TRADING",
         order_by: s.id
     )
   end
@@ -36,9 +37,17 @@ defmodule CryptoDecisionLab.MarketData.Sync do
       with {:ok, response} <- Binance.exchange_info(),
            {:ok, rows, limit} <- metadata_rows(response.body) do
         now = response.fetched_at
-        assets = Map.new(Repo.all(Asset), &{&1.symbol, &1.id})
+
+        assets =
+          Map.new(
+            Repo.all(from(a in Asset, where: a.category != "precious_metals")),
+            &{&1.symbol, &1.id}
+          )
+
         # Absence means unavailable, not a user preference change.
-        Repo.update_all(Symbol, set: [trading_status: "UNAVAILABLE", updated_at: now])
+        Repo.update_all(from(s in Symbol, where: s.exchange == "binance"),
+          set: [trading_status: "UNAVAILABLE", updated_at: now]
+        )
 
         for row <- rows, Map.has_key?(assets, row["baseAsset"]), row["quoteAsset"] == "USDT" do
           attrs = %{
@@ -225,7 +234,7 @@ defmodule CryptoDecisionLab.MarketData.Sync do
   def candles(symbol_id, mode \\ :backfill, options \\ [])
       when mode in [:backfill, :incremental, :repair] do
     Collector.run(fn ->
-      with %Symbol{} = symbol <- Repo.get(Symbol, symbol_id),
+      with %Symbol{exchange: "binance"} = symbol <- Repo.get(Symbol, symbol_id),
            true <-
              symbol.enabled and symbol.trading_status == "TRADING" and
                Repo.get!(Asset, symbol.asset_id).enabled do

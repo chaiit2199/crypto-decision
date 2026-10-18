@@ -69,7 +69,7 @@ defmodule CryptoDecisionLab.DecisionsTest do
     AnalysisFixtures.seed(other)
 
     Repo.update_all(CryptoDecisionLab.MarketData.LatestPrice,
-      set: [fetched_at: DateTime.add(MarketFixtures.now(), -91)]
+      set: [fetched_at: DateTime.add(MarketFixtures.now(), -181)]
     )
 
     assert {:ok, %{reason: "stale_price"}} = Decisions.analyze(other.id, slot)

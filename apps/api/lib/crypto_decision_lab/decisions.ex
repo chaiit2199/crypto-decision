@@ -6,7 +6,7 @@ defmodule CryptoDecisionLab.Decisions do
   alias CryptoDecisionLab.MarketData.Collector
   alias CryptoDecisionLab.Decisions.{Analysis, AnalysisWorker, JevProvider}
 
-  @version "hourly-research-v1"
+  @version "hourly-research-v2"
   @spec enabled?() :: boolean()
   def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
 
@@ -37,7 +37,7 @@ defmodule CryptoDecisionLab.Decisions do
       slot = div(DateTime.to_unix(Collector.now()), interval) * interval
 
       Repo.transaction(fn ->
-        MarketData.Sync.active_symbols()
+        (MarketData.Sync.active_symbols() ++ MarketData.SourceSync.active_symbols("coinbase"))
         |> Enum.map(fn symbol ->
           case %{symbol_id: symbol.id, slot: slot} |> AnalysisWorker.new() |> Oban.insert() do
             {:ok, job} -> job.id

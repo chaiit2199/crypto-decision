@@ -11,7 +11,7 @@ config :crypto_decision_lab,
   ecto_repos: [CryptoDecisionLab.Repo],
   generators: [timestamp_type: :utc_datetime_usec],
   sync_enabled: false,
-  price_poll_interval_ms: 30_000,
+  price_poll_interval_ms: 120_000,
   analysis_interval_seconds: 300,
   binance_transport: CryptoDecisionLab.MarketData.Binance.Transport,
   clock: CryptoDecisionLab.Clock

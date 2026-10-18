@@ -29,6 +29,15 @@ const analysisSchema = z.object({
     features: z.object({
         ema20: decimal.optional(),
         ema50: decimal.optional(),
+        ema200: decimal.optional(),
+        macd: decimal.optional(),
+        macd_signal: decimal.optional(),
+        macd_histogram: decimal.optional(),
+        atr14: decimal.optional(),
+        adx14: decimal.optional(),
+        relative_volume20: decimal.nullable().optional(),
+        return_1h_percent: decimal.optional(),
+        return_24h_percent: decimal.optional(),
         rsi14: decimal.optional(),
         last_close_time: timestamp.optional(),
         price_at: timestamp.optional(),
@@ -50,14 +59,20 @@ export type MarketAnalysisData = z.infer<typeof analysisSchema>;
 const marketSchema = z.object({
     id: z.number(),
     symbol: z.string(),
+    exchange: z.string(),
+    base_asset: z.string(),
+    quote_asset: z.string(),
     enabled: z.boolean(),
     trading_status: z.string(),
     analysis_enabled: z.boolean(),
+    analysis_unavailable_reason: z.string().nullable(),
+    price_max_age_seconds: z.number().positive(),
     analysis_interval_seconds: z.number().int().positive(),
     analysis: analysisSchema.nullable(),
     latest_price: z
         .object({
             price: decimal,
+            data_at: timestamp.nullable(),
             fetched_at: timestamp,
         })
         .nullable(),
@@ -66,7 +81,8 @@ const marketSchema = z.object({
             price_change_percent: decimal,
             high_price: decimal,
             low_price: decimal,
-            quote_volume: decimal,
+            quote_volume: decimal.nullable(),
+            base_volume: decimal,
             fetched_at: timestamp,
         })
         .nullable(),
@@ -90,6 +106,14 @@ export const marketsSchema = z.object({
 export const statusSchema = z.object({
     data: z.object({
         enabled: z.boolean(),
+        price_poll_interval_seconds: z.number().positive(),
+        sources: z.record(z.string(), z.object({
+            prices_at: timestamp.nullable(),
+            stats_at: timestamp.nullable(),
+            metadata_at: timestamp.nullable(),
+            blocked_until: timestamp.nullable(),
+            last_error: z.string().nullable(),
+        })),
         configured_assets: z.number(),
         active_symbols: z.number(),
         collector: z

@@ -30,8 +30,6 @@ defmodule CryptoDecisionLab.MarketData.TickerStats do
       :high_price,
       :low_price,
       :base_volume,
-      :quote_volume,
-      :trade_count,
       :data_at,
       :fetched_at,
       :updated_at

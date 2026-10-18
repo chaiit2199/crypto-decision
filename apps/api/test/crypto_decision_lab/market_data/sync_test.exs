@@ -148,12 +148,20 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
              Postgrex.query!(connection, "SELECT pg_try_advisory_lock(7413201)", [])
   end
 
-  test "price polling is due at the next 30-second tick, not 60 seconds" do
+  test "price polling waits for the configured two-minute interval" do
     F.symbol()
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
     assert {:ok, 1} = Sync.poll()
-    Process.put(:now, DateTime.add(F.now(), 30))
-    F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "101"}])])
+    Process.put(:now, DateTime.add(F.now(), 60))
+    assert {:ok, :not_due} = Sync.poll()
+    Process.put(:now, DateTime.add(F.now(), 120))
+
+    F.queue([
+      F.response([%{"symbol" => "BTCUSDT", "price" => "101"}], 200, %{
+        "date" => [Calendar.strftime(DateTime.add(F.now(), 120), "%a, %d %b %Y %H:%M:%S GMT")]
+      })
+    ])
+
     assert {:ok, 1} = Sync.poll()
     assert length(Process.get(:http_calls)) == 2
   end

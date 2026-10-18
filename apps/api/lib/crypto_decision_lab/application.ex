@@ -16,6 +16,13 @@ defmodule CryptoDecisionLab.Application do
       {Oban, Application.fetch_env!(:crypto_decision_lab, Oban)},
       {Task.Supervisor, name: CryptoDecisionLab.TaskSupervisor},
       CryptoDecisionLab.MarketData.Poller,
+      Supervisor.child_spec(
+        {CryptoDecisionLab.MarketData.Poller,
+         name: CryptoDecisionLab.MarketData.SourcePoller,
+         bootstrap: false,
+         run: &CryptoDecisionLab.MarketData.SourceSync.enqueue/0},
+        id: CryptoDecisionLab.MarketData.SourcePoller
+      ),
       # Start to serve requests, typically the last entry
       CryptoDecisionLabWeb.Endpoint
     ]

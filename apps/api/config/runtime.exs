@@ -86,7 +86,7 @@ market_cron =
   if sync_enabled do
     [
       {"0 0 * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "metadata"}},
-      {"*/5 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "stats"}},
+      {"*/2 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "stats"}},
       {"1 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "candles"}},
       {"15 0 * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "integrity"}}
     ]
@@ -98,7 +98,8 @@ analysis_cron =
   if jev_enabled, do: [{"* * * * *", CryptoDecisionLab.Decisions.AnalysisWorker}], else: []
 
 queues =
-  if(sync_enabled, do: [market: 1], else: []) ++ if jev_enabled, do: [analysis: 1], else: []
+  if(sync_enabled, do: [market: 1, sources: 1], else: []) ++
+    if jev_enabled, do: [analysis: 1], else: []
 
 plugins =
   if queues == [] do

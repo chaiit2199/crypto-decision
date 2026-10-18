@@ -10,6 +10,19 @@ defmodule CryptoDecisionLab.TechnicalAnalysisTest do
     assert Decimal.equal?(result["ema20"], "290.5")
     assert Decimal.equal?(result["ema50"], "275.5")
     assert Decimal.equal?(result["rsi14"], "100")
+    # Unit ramp: EMA200 = last - 199/2; EMA12 - EMA26 = 7,
+    # all true ranges are 1, directional movement only positive, constant volume.
+    for {key, value} <- [
+          {"ema200", "200.5"},
+          {"macd", "7"},
+          {"macd_signal", "7"},
+          {"macd_histogram", "0"},
+          {"atr14", "1"},
+          {"adx14", "100"},
+          {"relative_volume20", "1"}
+        ] do
+      assert Decimal.equal?(result[key], value)
+    end
 
     assert Decimal.compare(
              Decimal.abs(Decimal.sub(result["return_24h_percent"], "8.695652173913")),
@@ -52,6 +65,20 @@ defmodule CryptoDecisionLab.TechnicalAnalysisTest do
     assert {:ok, result} = TechnicalAnalysis.features(candles, MarketFixtures.now())
     assert Decimal.equal?(result["ema20"], price)
     assert Decimal.equal?(result["rsi14"], 50)
+    assert Decimal.equal?(result["atr14"], 0)
+    assert Decimal.equal?(result["adx14"], 0)
+    assert Decimal.equal?(result["macd_histogram"], 0)
+  end
+
+  test "relative volume excludes the current bar and has no invented zero-denominator value" do
+    candles =
+      AnalysisFixtures.candles() |> List.update_at(-1, &%{&1 | base_volume: Decimal.new(20)})
+
+    assert {:ok, features} = TechnicalAnalysis.features(candles, MarketFixtures.now())
+    assert Decimal.equal?(features["relative_volume20"], 2)
+    empty_volume = Enum.map(candles, &%{&1 | base_volume: Decimal.new(0)})
+    assert {:ok, features} = TechnicalAnalysis.features(empty_volume, MarketFixtures.now())
+    assert is_nil(features["relative_volume20"])
   end
 
   test "missing history, gaps, future candles and stale history cannot produce features" do

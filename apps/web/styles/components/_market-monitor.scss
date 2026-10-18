@@ -96,6 +96,20 @@
         border: 1px solid var(--border);
         background: var(--surface);
     }
+    &__market-selection {
+        @apply mb-5 flex flex-wrap items-center justify-between gap-3 text-xs;
+        color: var(--muted);
+    }
+    &__quote {
+        @apply flex items-center gap-3;
+
+        select {
+            @apply rounded-lg px-3 py-2 text-sm;
+            color: var(--text);
+            background: var(--surface);
+            border: 1px solid var(--border);
+        }
+    }
     &__toolbar {
         @apply flex flex-wrap items-center justify-between gap-5 p-6;
     }

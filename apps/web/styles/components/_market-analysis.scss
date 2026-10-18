@@ -26,16 +26,49 @@
     }
 
     &__signal {
-        @apply my-4 text-base font-semibold;
+        @apply my-4 rounded-lg border px-4 py-3 text-base font-semibold;
+        border-color: currentColor;
         color: var(--muted);
     }
 
     &__signal[data-signal="BUY"] {
         color: var(--positive);
+        background: color-mix(in srgb, var(--positive) 12%, transparent);
     }
 
     &__signal[data-signal="SELL"] {
         color: var(--negative);
+        background: color-mix(in srgb, var(--negative) 12%, transparent);
+    }
+
+    &__explanation {
+        @apply text-sm leading-relaxed;
+    }
+
+    &__answers > div,
+    &__features > div {
+        @apply rounded-lg border p-3;
+        border-color: var(--border);
+    }
+
+    &__answers dt,
+    &__features dt {
+        @apply mb-2 text-sm font-medium;
+    }
+
+    &__answers dd,
+    &__features dd {
+        @apply text-xs leading-relaxed;
+        color: var(--muted);
+    }
+
+    &__features &__value {
+        @apply mb-2 text-lg font-semibold;
+        color: var(--text);
+    }
+
+    &__confidence {
+        @apply mt-3;
     }
 
     &__answers,
