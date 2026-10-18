@@ -6,7 +6,7 @@ pipeline {
     DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
     DEPLOY_SSH_CREDENTIALS_ID = 'core-api-production-ssh'
     DEPLOY_HOST = 'deploy_user@180.93.146.25'
-    DEPLOY_PATH = '/home/deploy_user/backend/crypto-decision'
+    DEPLOY_PATH = '/home/deploy_user/crypto-decision'
   }
   options {
     skipDefaultCheckout(true)
@@ -56,7 +56,29 @@ docker push "$IMAGE_TAG"
         sshagent(credentials: [env.DEPLOY_SSH_CREDENTIALS_ID]) {
           sh '''#!/usr/bin/env bash
 set -euo pipefail
-ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_HOST" "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env'"
+echo "Checking deployment prerequisites on $DEPLOY_HOST at $DEPLOY_PATH"
+ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes "$DEPLOY_HOST" "bash -s -- '$DEPLOY_PATH'" <<'REMOTE_CHECK'
+set -euo pipefail
+deploy_path="$1"
+if [[ ! -d "$deploy_path" ]]; then
+  echo "ERROR: Missing deploy directory: $deploy_path" >&2
+  exit 1
+fi
+if [[ ! -r "$deploy_path/env.sh" ]]; then
+  echo "ERROR: Missing or unreadable $deploy_path/env.sh." >&2
+  exit 1
+fi
+if [[ ! -w "$deploy_path" ]]; then
+  echo "ERROR: Deploy directory is not writable: $deploy_path" >&2
+  exit 1
+fi
+command -v docker >/dev/null || { echo "ERROR: Docker is not installed" >&2; exit 1; }
+command -v flock >/dev/null || { echo "ERROR: flock is not installed" >&2; exit 1; }
+docker compose version
+docker ps >/dev/null
+echo "Deployment prerequisites OK"
+REMOTE_CHECK
+echo "Uploading deployment files"
 scp -o BatchMode=yes -o StrictHostKeyChecking=yes apps/api/docker-compose.yml scripts/deploy-api.sh "$DEPLOY_HOST:$DEPLOY_PATH/"
 ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 "$DEPLOY_HOST" "cd '$DEPLOY_PATH' && bash deploy-api.sh '$IMAGE_TAG'"
 '''

@@ -65,4 +65,4 @@ Nếu cặp USD vừa đăng ký lại thành UNAVAILABLE hoặc vẫn thấy l�
 ## Deploy API lên VPS
 
 Xem [hướng dẫn deploy](docs/deploy-api.md). Jenkins script path: `apps/api/Jenkinsfile`;
-Docker build context: `apps/api`. Cấu hình mẫu VPS: `apps/api/.env.production.example`.
+Docker build context: `apps/api`. Cấu hình mẫu VPS: `apps/api/env.sh.example`.
