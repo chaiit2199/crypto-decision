@@ -11,3 +11,5 @@
 **/*.tsbuildinfo
 **/test-results/
 **/playwright-report/
+env.sh
+!apps/api/.env.production.example

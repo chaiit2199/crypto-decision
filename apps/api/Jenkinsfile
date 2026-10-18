@@ -1,0 +1,71 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY_HOST = 'docker.io'
+    IMAGE_REPOSITORY = 'docker.io/chaiit2199/crypto-decision-api'
+    DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
+    DEPLOY_SSH_CREDENTIALS_ID = 'core-api-production-ssh'
+    DEPLOY_HOST = 'deploy_user@180.93.146.25'
+    DEPLOY_PATH = '/home/deploy_user/backend/crypto-decision'
+  }
+  options {
+    skipDefaultCheckout(true)
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+  }
+  parameters {
+    choice(name: 'DEPLOY', choices: ['none', 'production'], description: 'Build/push hoặc deploy API lên VPS')
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+        script {
+          env.COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+          env.IMAGE_TAG = "${env.IMAGE_REPOSITORY}:${env.BUILD_NUMBER}-${env.COMMIT}"
+        }
+      }
+    }
+    stage('Build release') {
+      steps {
+        sh '''#!/usr/bin/env bash
+set -euo pipefail
+docker build --file apps/api/Dockerfile --label "org.opencontainers.image.revision=$COMMIT" --tag "$IMAGE_TAG" apps/api
+'''
+      }
+    }
+    stage('Push image') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID,
+          usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+          sh '''#!/usr/bin/env bash
+set -euo pipefail
+export DOCKER_CONFIG="$(mktemp -d)"
+trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+printf '%s' "$DOCKER_PASS" | docker login "$REGISTRY_HOST" --username "$DOCKER_USER" --password-stdin
+docker push "$IMAGE_TAG"
+'''
+        }
+      }
+    }
+    stage('Deploy and verify') {
+      when { expression { params.DEPLOY == 'production' } }
+      steps {
+        sshagent(credentials: [env.DEPLOY_SSH_CREDENTIALS_ID]) {
+          sh '''#!/usr/bin/env bash
+set -euo pipefail
+ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_HOST" "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env'"
+scp -o BatchMode=yes -o StrictHostKeyChecking=yes apps/api/docker-compose.yml scripts/deploy-api.sh "$DEPLOY_HOST:$DEPLOY_PATH/"
+ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 "$DEPLOY_HOST" "cd '$DEPLOY_PATH' && bash deploy-api.sh '$IMAGE_TAG'"
+'''
+        }
+      }
+    }
+  }
+  post {
+    success { echo "Image: ${env.IMAGE_TAG}; deployment mode: ${params.DEPLOY}" }
+    failure { echo 'Build/deploy failed. Check the failing stage; no automatic schema rollback.' }
+  }
+}

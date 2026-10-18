@@ -52,7 +52,15 @@ secret =
 
 config :crypto_decision_lab, CryptoDecisionLabWeb.Endpoint,
   secret_key_base: secret,
-  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [
+    ip: if(config_env() == :prod, do: {0, 0, 0, 0}, else: {127, 0, 0, 1}),
+    port: String.to_integer(System.get_env("PORT", "4000"))
+  ]
+
+if config_env() == :prod do
+  config :crypto_decision_lab, CryptoDecisionLabWeb.Endpoint,
+    url: [host: System.get_env("PHX_HOST", "localhost"), scheme: "https", port: 443]
+end
 
 if System.get_env("PHX_SERVER") in ["true", "1"] do
   config :crypto_decision_lab, CryptoDecisionLabWeb.Endpoint, server: true

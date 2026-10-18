@@ -1,0 +1,44 @@
+name: crypto-decision
+services:
+  api:
+    image: ${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    environment:
+      PHX_SERVER: "true"
+      PHX_HOST: ${PHX_HOST:?Set PHX_HOST}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE}
+      PORT: "4000"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-crypto_decision}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-crypto_decision_lab_prod}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      MARKET_SYNC_ENABLED: ${MARKET_SYNC_ENABLED:-true}
+      JEV_ENABLED: ${JEV_ENABLED:-false}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      JEV_MODEL: ${JEV_MODEL:-jev-latest}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-5005}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crypto_decision}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-crypto_decision_lab_prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    shm_size: 256mb
+volumes:
+  postgres_data:

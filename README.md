@@ -61,3 +61,8 @@ Scheduler nguồn USD/vàng tự chạy khi `MARKET_SYNC_ENABLED=true`. Public C
 Snapshot XAU/USD có timestamp nguồn; history/OHLC vàng chưa được kết nối do cần API key riêng. Vì vậy vàng chưa có chỉ báo/Jev. Coinbase ban đầu chỉ lấy tối đa 300 nến 1H gần nhất, giữ lại nến đã đóng hợp lệ; không tự dựng các giờ thiếu. Nguồn này chưa triển khai backfill 3 năm. Khối lượng Coinbase hiển thị theo tài sản gốc, vì không có quote volume trong endpoint stats.
 
 Nếu cặp USD vừa đăng ký lại thành UNAVAILABLE hoặc vẫn thấy lịch cũ, kiểm tra còn backend `mix run --no-halt` cũ dùng chung DB hay không. Dừng đúng tiến trình cũ trước khi chạy lại `mix market.sources`; không khởi động nhiều phiên backend khác phiên bản cùng DB.
+
+## Deploy API lên VPS
+
+Xem [hướng dẫn deploy](docs/deploy-api.md). Jenkins script path: `apps/api/Jenkinsfile`;
+Docker build context: `apps/api`. Cấu hình mẫu VPS: `apps/api/.env.production.example`.
