@@ -34,6 +34,10 @@ defmodule CryptoDecisionLab.SyncConfigTest do
     assert config[:sync_enabled]
     assert config[Oban][:queues] == [market: 1, sources: 1]
     assert Keyword.has_key?(config[Oban][:plugins], Oban.Plugins.Cron)
+
+    assert {"*/5 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "stats"}} in config[
+             Oban
+           ][:plugins][Oban.Plugins.Cron][:crontab]
   end
 
   test "development can explicitly disable all automatic collection" do
@@ -85,12 +89,12 @@ defmodule CryptoDecisionLab.SyncConfigTest do
   end
 
   test "development intervals come from dev.exs while other environments retain their defaults" do
-    assert config(:dev)[:price_poll_interval_ms] == 120_000
-    assert config(:dev)[:analysis_interval_seconds] == 300
+    assert config(:dev)[:price_poll_interval_ms] == 300_000
+    assert config(:dev)[:analysis_interval_seconds] == 900
 
     for env <- [:test, :prod] do
-      assert config(env)[:price_poll_interval_ms] == 120_000
-      assert config(env)[:analysis_interval_seconds] == 300
+      assert config(env)[:price_poll_interval_ms] == 300_000
+      assert config(env)[:analysis_interval_seconds] == 900
     end
   end
 

@@ -1,5 +1,7 @@
 # Jev: phân tích từng cặp theo lịch môi trường
 
+Lịch hiện tại (2026-10-18): giá/API mỗi 5 phút, Jev mỗi 15 phút ở cả development và production. Xem [synchronization](synchronization.md#chu-kỳ-hiện-tại--2026-10-18); các mốc bên dưới ghi lại lịch trước đây.
+
 Yêu cầu người dùng ngày 2026-10-17 mở rộng phạm vi sang phân tích Jev và thay lịch đề xuất 4H bằng Cron `*/5 * * * *` UTC. Lịch này độc lập với thu thập giá 30 giây. Không đặt lệnh thật.
 
 ## Kiến trúc và phạm vi

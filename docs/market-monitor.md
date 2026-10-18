@@ -5,10 +5,10 @@ Phạm vi theo yêu cầu: một trang theo dõi giá trong `apps/web`, chưa tr
 ## Luồng dữ liệu
 
 - Development bật sync mặc định; `MARKET_SYNC_ENABLED=false` tắt poller, queue và Cron. Production vẫn phải bật tường minh; test luôn tắt.
-- Repo Oban dùng chung ở `config/config.exs`; runtime ghép queue và Cron riêng cho market/Jev theo công tắc môi trường. Giá dùng supervised poller 30 giây, không dùng Cron dưới một phút. Nếu backfill chiếm khóa, poller thử lại khóa sau 1 giây; deadline chia sẻ vẫn chặn request Binance dư.
+- Repo Oban dùng chung ở `config/config.exs`; runtime ghép queue và Cron riêng cho market/Jev theo công tắc môi trường. Giá dùng supervised poller 5 phút, không dùng Cron dưới một phút. Nếu backfill chiếm khóa, poller thử lại khóa sau 1 giây; deadline chia sẻ vẫn chặn request Binance dư.
 - Bootstrap ưu tiên snapshot giá và thống kê trước backfill. Job backfill có độ ưu tiên thấp hơn các job cập nhật hiện tại.
 - Next.js App Router tải dữ liệu ban đầu phía server. Route `/api/market-monitor` chỉ đọc hai endpoint Phoenix cố định (`/api/markets`, `/api/system/market-data-status`); không chuyển tiếp URL tùy ý hoặc lộ cấu hình DB.
-- Client đọc lại route này mỗi 5 giây, không request chồng lấn; backend lấy giá mỗi 30 giây. Có nút tải lại và tìm kiếm asset/cặp. Đây là cập nhật snapshot, không phải WebSocket từng giao dịch.
+- Client đọc lại route này mỗi 5 phút, không request chồng lấn; backend lấy giá mỗi 5 phút. Có nút tải lại và tìm kiếm asset/cặp. Đây là cập nhật snapshot, không phải WebSocket từng giao dịch.
 - Schema Zod ở ranh giới HTTP; Decimal giữ dưới dạng chuỗi. UI thể hiện thời điểm lấy giá, trạng thái thiếu/cũ, collector và số job; không tạo giá giả.
 
 ## Cấu trúc và giao diện
@@ -27,7 +27,7 @@ Chọn Tailwind 3.4 cùng Sass/PostCSS để giữ quy ước SCSS + `@apply` c�
 
 ## Nhấp nháy, chi tiết và chart
 
-- Luồng hiện tại: Binance → poller Phoenix khoảng 30 giây → PostgreSQL → API Phoenix → Next.js server route → trình duyệt polling 5 giây sau khi request trước hoàn tất. Không dùng WebSocket; giá có thể trễ do mạng, backfill, cooldown. Thống kê 24h cập nhật mỗi 5 phút.
+- Luồng hiện tại: Binance → poller Phoenix khoảng 5 phút → PostgreSQL → API Phoenix → Next.js server route → trình duyệt polling 5 phút sau khi request trước hoàn tất. Không dùng WebSocket; giá có thể trễ do mạng, backfill, cooldown. Thống kê 24h cập nhật mỗi 5 phút.
 - Giá nháy xanh khi tăng, đỏ khi giảm, một lần trong khoảng 0,8 giây; so sánh chuỗi Decimal chính xác bằng BigInt, không làm tròn qua float. Không nháy khi render lần đầu, cùng giá hoặc thiếu dữ liệu; tôn trọng prefers-reduced-motion.
 - Bấm tên/cặp hoặc dòng tài sản mở panel chi tiết ngay trên bảng; có nút mã truy cập bằng bàn phím, trạng thái lựa chọn rõ ràng. Panel dùng snapshot đang có, tự cập nhật theo bảng. Hiển thị giá, biến động, high/low, volume và freshness. Asset chưa có thị trường vẫn xem được thông tin thiếu dữ liệu.
 - Chart dùng TradingView Lightweight Charts theo kiến trúc dự án. Nến OHLC và volume lấy từ PostgreSQL qua `/api/markets/:symbol/candles`, 120 nến đã đóng, các khung 1H/4H/1D. Khung 4H/1D tổng hợp phía backend; thiếu dữ liệu phải báo rõ, không tạo nến thay thế.

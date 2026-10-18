@@ -32,8 +32,8 @@ function fixtureMonitor(
                         enabled: true,
                         trading_status: "TRADING",
                         analysis_enabled: true,
-                        analysis_interval_seconds: 300,
-                        price_max_age_seconds: 180,
+                        analysis_interval_seconds: 900,
+                        price_max_age_seconds: 360,
                         analysis_unavailable_reason: null,
                         analysis,
                         latest_price: {
@@ -56,7 +56,7 @@ function fixtureMonitor(
             })),
             status: {
                 enabled: true,
-                price_poll_interval_seconds: 120,
+                price_poll_interval_seconds: 300,
                 sources: {},
                 configured_assets: 3,
                 active_symbols: 2,
@@ -258,7 +258,7 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
     await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
     const panel = page.getByRole("region", { name: "Phân tích Jev" });
     await expect(panel).toContainText("Đang chờ lần phân tích Jev đầu tiên");
-    await expect(panel).toContainText("Mỗi 5 phút · Chỉ báo 1H");
+    await expect(panel).toContainText("Mỗi 15 phút · Chỉ báo 1H");
     analysis = {
         id: 1,
         status: "ready",

@@ -36,7 +36,11 @@ defmodule CryptoDecisionLab.DecisionsTest do
     end)
 
     symbol = MarketFixtures.symbol()
-    slot = div(DateTime.to_unix(MarketFixtures.now()), 300) * 300
+
+    slot =
+      div(DateTime.to_unix(MarketFixtures.now()), Decisions.interval_seconds()) *
+        Decisions.interval_seconds()
+
     %{symbol: symbol, slot: slot}
   end
 
@@ -58,7 +62,7 @@ defmodule CryptoDecisionLab.DecisionsTest do
 
     refute_receive {:jev_called, _}
     assert Repo.aggregate(Analysis, :count) == 1
-    assert {:ok, :expired} = Decisions.analyze(symbol.id, slot - 300)
+    assert {:ok, :expired} = Decisions.analyze(symbol.id, slot - Decisions.interval_seconds())
   end
 
   test "missing and stale inputs skip paid analysis", %{symbol: symbol, slot: slot} do
@@ -180,19 +184,19 @@ defmodule CryptoDecisionLab.DecisionsTest do
     refute_receive {:jev_called, _}
   end
 
-  test "two-minute slots drive dispatch, expiry and successive jobs", %{
+  test "fifteen-minute slots drive dispatch, expiry and successive jobs", %{
     symbol: symbol,
     slot: slot
   } do
-    Application.put_env(:crypto_decision_lab, :analysis_interval_seconds, 120)
+    Application.put_env(:crypto_decision_lab, :analysis_interval_seconds, 900)
     AnalysisFixtures.seed(symbol)
     assert {:ok, row} = Decisions.analyze(symbol.id, slot)
-    assert DateTime.diff(row.valid_until, row.slot) == 120
-    assert {:ok, :expired} = Decisions.analyze(symbol.id, slot - 120)
+    assert DateTime.diff(row.valid_until, row.slot) == 900
+    assert {:ok, :expired} = Decisions.analyze(symbol.id, slot - 900)
     assert {:ok, 1} = Decisions.enqueue_due()
     Process.put(:now, DateTime.add(MarketFixtures.now(), 60))
     assert {:ok, 0} = Decisions.enqueue_due()
-    Process.put(:now, DateTime.add(MarketFixtures.now(), 120))
+    Process.put(:now, DateTime.add(MarketFixtures.now(), 900))
     assert {:ok, 1} = Decisions.enqueue_due()
     assert Repo.aggregate(from(j in Oban.Job, where: j.queue == "analysis"), :count) == 2
   end

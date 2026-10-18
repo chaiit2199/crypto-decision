@@ -72,7 +72,7 @@ docker compose --env-file /dev/null --env-file .image.env ps
 docker compose --env-file /dev/null --env-file .image.env logs --tail 100 api
 ```
 
-Backup PostgreSQL trước migration. Migration lỗi dừng deploy trước khi thay API cũ. Health lỗi báo thất bại, không tự rollback schema. Muốn rollback ứng dụng: chạy deploy-api.sh với tag cũ sau khi xác nhận schema còn tương thích. Không chạy down -v. Lần đầu migration tạo schema; metadata collector sẽ seed danh mục khi MARKET_SYNC_ENABLED=true. Jev opt-in bằng JEV_ENABLED=true và TYPESAFE_API_KEY. Chu kỳ hiện tại: giá 120 giây, Jev 300 giây; chưa đủ dữ liệu thì chưa có phân tích.
+Backup PostgreSQL trước migration. Migration lỗi dừng deploy trước khi thay API cũ. Health lỗi báo thất bại, không tự rollback schema. Muốn rollback ứng dụng: chạy deploy-api.sh với tag cũ sau khi xác nhận schema còn tương thích. Không chạy down -v. Lần đầu migration tạo schema; metadata collector sẽ seed danh mục khi MARKET_SYNC_ENABLED=true. Jev opt-in bằng JEV_ENABLED=true và TYPESAFE_API_KEY. Chu kỳ hiện tại: giá 300 giây, Jev 900 giây; chưa đủ dữ liệu thì chưa có phân tích.
 
 Tham khảo: https://hexdocs.pm/phoenix/releases.html và https://docs.docker.com/compose/how-tos/startup-order/.
 

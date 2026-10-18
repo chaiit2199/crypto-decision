@@ -51,4 +51,10 @@ Compose chọn PostgreSQL 18 và mount `/var/lib/postgresql` theo [Docker Offici
 
 Dev bật sync mặc định; tắt bằng `MARKET_SYNC_ENABLED=false`. Production cần bật tường minh, test luôn tắt. Repo Oban khai báo trong `config/config.exs`; runtime ghép queue/Cron cho market và Jev riêng biệt. Tắt sync chỉ tắt collector và queue market; queue analysis vẫn chạy nếu `JEV_ENABLED=true`. Thay đổi biến môi trường hoặc config cần restart API.
 
-Bootstrap enqueue prices/stats trước backfill; backfill và repair có priority 3, công việc hiện tại priority 0 (Oban ưu tiên số nhỏ). Poll giá vẫn dùng process 30 giây và advisory lock; nếu lock bận, thử lại khóa sau 1 giây, không tạo request Binance trước deadline 30 giây. Web chỉ đọc API mỗi 5 giây; xem [market-monitor.md](market-monitor.md).
+Bootstrap enqueue prices/stats trước backfill; backfill và repair có priority 3, công việc hiện tại priority 0 (Oban ưu tiên số nhỏ). Poll giá vẫn dùng process 5 phút và advisory lock; nếu lock bận, thử lại khóa sau 1 giây, không tạo request Binance trước deadline 5 phút. Web chỉ đọc API mỗi 5 phút; xem [market-monitor.md](market-monitor.md).
+
+## Chu kỳ hiện tại — 2026-10-18
+
+Theo yêu cầu mới: collector giá và thống kê 24h chạy mỗi 5 phút; dashboard đọc API thị trường và lịch sử nến mỗi 5 phút sau khi request trước hoàn tất. Lần mở trang, đổi cặp/khung nến hoặc tải lại thủ công vẫn gọi ngay. Jev dùng slot UTC 15 phút (00/15/30/45), dispatcher kiểm tra mỗi phút nhưng chỉ xếp job ở phút đầu slot. GET chỉ đọc dữ liệu đã lưu.
+
+`config.exs` và `dev.exs` dùng `price_poll_interval_ms: 300_000`, `analysis_interval_seconds: 900`; freshness giá vẫn là chu kỳ poll + 60 giây. Cần khởi động lại backend hoặc build/deploy lại release để áp dụng. Lịch metadata, nến đóng và integrity giữ riêng.

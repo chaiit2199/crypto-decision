@@ -94,7 +94,7 @@ market_cron =
   if sync_enabled do
     [
       {"0 0 * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "metadata"}},
-      {"*/2 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "stats"}},
+      {"*/5 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "stats"}},
       {"1 * * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "candles"}},
       {"15 0 * * *", CryptoDecisionLab.MarketData.SyncWorker, args: %{kind: "integrity"}}
     ]

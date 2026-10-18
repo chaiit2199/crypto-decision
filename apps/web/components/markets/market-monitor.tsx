@@ -48,7 +48,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
             setNow(Date.now());
             setIsRefreshing(false);
             // Schedule after completion so slow requests never accumulate.
-            timer = setTimeout(refresh, 5_000);
+            timer = setTimeout(refresh, 300_000);
         }
 
         timer = setTimeout(refresh, 0);
@@ -60,6 +60,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
 
     const assets = data?.assets ?? [];
     const selectedAsset = assets.find((asset) => asset.symbol === selectedSymbol);
+    const market = selectedAsset ? selectedMarket(selectedAsset, quoteAsset) : undefined;
     const search = query.trim().toLowerCase();
     const visibleAssets = assets.filter((asset) =>
         `${asset.symbol} ${asset.name} ${asset.markets.map((market) => market.symbol).join(" ")}`
@@ -131,7 +132,11 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                         <span aria-hidden="true" />
                         {connectionLabel}
                     </span>
-                    <span>Giá mỗi {data ? data.status.price_poll_interval_seconds / 60 : 2} phút · Jev mỗi 5 phút · Trang làm mới mỗi 5 giây</span>
+                    <span>
+                        Giá mỗi {(data?.status.price_poll_interval_seconds ?? 300) / 60} phút
+                        {" · "}Jev mỗi {(market?.analysis_interval_seconds ?? 900) / 60} phút
+                        {" · "}Trang làm mới mỗi 5 phút
+                    </span>
                 </div>
             </section>
 

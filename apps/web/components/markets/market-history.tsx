@@ -39,7 +39,7 @@ export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: Ma
                 setError(result.message);
             }
 
-            timer = setTimeout(refresh, 60_000);
+            timer = setTimeout(refresh, 300_000);
         }
 
         timer = setTimeout(refresh, 0);
