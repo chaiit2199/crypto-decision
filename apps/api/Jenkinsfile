@@ -2,7 +2,7 @@ pipeline {
   agent any
   environment {
     REGISTRY_HOST = 'docker.io'
-    IMAGE_REPOSITORY = 'docker.io/chaiit2199/crypto-decision-api'
+    IMAGE_REPOSITORY = 'docker.io/chaiit2199/crypto-decision'
     DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
     DEPLOY_SSH_CREDENTIALS_ID = 'core-api-production-ssh'
     DEPLOY_HOST = 'deploy_user@180.93.146.25'

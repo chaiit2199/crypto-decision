@@ -9,7 +9,7 @@ config :crypto_decision_lab,
 
 config :crypto_decision_lab, Oban, repo: CryptoDecisionLab.Repo
 
-# Development connection, following the same layout as core_api/config/dev.exs.
+# Development connection, following the same layout as crypto-decision/config/dev.exs.
 config :crypto_decision_lab, CryptoDecisionLab.Repo,
   username: System.get_env("DB_USER", "postgres"),
   password: System.get_env("DB_PASSWORD", "093834"),

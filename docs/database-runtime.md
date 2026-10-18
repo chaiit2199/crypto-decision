@@ -1,12 +1,12 @@
-# Database — cấu hình tương tự core_api
+# Database — cấu hình tương tự crypto-decision
 
 ## Cấu trúc đã chọn
 
-- **Dev:** `apps/api/config/dev.exs` khai báo đầy đủ username, password, hostname, database, port, pool_size và stacktrace, cùng cách tổ chức với `core_api/config/dev.exs`.
+- **Dev:** `apps/api/config/dev.exs` khai báo đầy đủ username, password, hostname, database, port, pool_size và stacktrace, cùng cách tổ chức với `crypto-decision/config/dev.exs`.
 - **Prod:** `apps/api/config/runtime.exs` đọc kết nối khi khởi động, áp dụng cả Mix và production release. Ưu tiên `DATABASE_URL`; nếu không đặt URL thì dùng `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_PORT`.
 - **Test:** giữ database riêng có hậu tố `_test` và không đọc `DATABASE_URL`.
 
-Không sao chép credentials của core_api. Dev đọc các biến môi trường hiện có để không đưa thông tin đăng nhập vào Git. Runtime không ghi đè cấu hình Repo của dev.
+Không sao chép credentials của crypto-decision. Dev đọc các biến môi trường hiện có để không đưa thông tin đăng nhập vào Git. Runtime không ghi đè cấu hình Repo của dev.
 
 ## Development
 

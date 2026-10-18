@@ -1,6 +1,6 @@
 # Deploy API lên VPS
 
-Kiến trúc: Jenkins checkout monorepo → build Phoenix release → push image theo build/commit → SSH VPS → PostgreSQL healthy → migration bằng image mới → khởi động API → health check. Không deploy frontend. Giữ quy trình Docker Hub/SSH của core_api và lineup_api, bỏ dependency core_auth.
+Kiến trúc: Jenkins checkout monorepo → build Phoenix release → push image theo build/commit → SSH VPS → PostgreSQL healthy → migration bằng image mới → khởi động API → health check. Không deploy frontend. Giữ quy trình Docker Hub/SSH của crypto-decision và lineup_api, bỏ dependency core_auth.
 
 Jenkins dùng script path `apps/api/Jenkinsfile`; Docker build context là `apps/api`. Builder và runner cùng Ubuntu Jammy. Compose project `crypto-decision` có volume riêng, không dùng volume/network core_auth. PostgreSQL không publish port; API publish localhost:5005 cho reverse proxy HTTPS trên VPS.
 
@@ -8,7 +8,7 @@ Jenkins dùng script path `apps/api/Jenkinsfile`; Docker build context là `apps
 
 VPS cần Docker Compose v2 hỗ trợ `up --wait`, Bash, quyền Docker và đăng nhập Docker Hub nếu image private. Jenkins cần Docker, Git, SSH Agent plugin, credential `docker-hub-credentials`, `core-api-production-ssh`; thêm host key VPS đã xác minh vào known_hosts của Jenkins. Sửa registry/host/path trong Jenkinsfile nếu hạ tầng khác.
 
-Tạo `/home/deploy_user/backend/crypto-decision`, sao chép `apps/api/.env.production.example` thành `.env` tại đó, điền password và SECRET_KEY_BASE (sinh bằng `openssl rand -base64 48`), chmod 600. Không dùng env.sh cũ của core_api. Không commit secrets. PHX_HOST là domain API; reverse proxy chuyển tiếp Host và X-Forwarded-Proto=https tới 127.0.0.1:5005. Nếu frontend chạy container khác, cấu hình mạng/proxy phù hợp; localhost của container không phải VPS.
+Tạo `/home/deploy_user/backend/crypto-decision`, sao chép `apps/api/.env.production.example` thành `.env` tại đó, điền password và SECRET_KEY_BASE (sinh bằng `openssl rand -base64 48`), chmod 600. Không dùng env.sh cũ của crypto-decision. Không commit secrets. PHX_HOST là domain API; reverse proxy chuyển tiếp Host và X-Forwarded-Proto=https tới 127.0.0.1:5005. Nếu frontend chạy container khác, cấu hình mạng/proxy phù hợp; localhost của container không phải VPS.
 
 Chạy Jenkins DEPLOY=none để build/push; DEPLOY=production để migrate/deploy. Pipeline chuyển compose và script lên VPS, không ghi đè `.env`. Image tag đang chạy được lưu trong `.image.env` sau khi health thành công.
 
@@ -21,7 +21,7 @@ Chạy trong thư mục deploy có `docker-compose.yml` và `.env`:
 ```bash
 cd /home/deploy_user/backend/crypto-decision
 # Thay BUILD-COMMIT bằng tag image Jenkins đã push thành công.
-export IMAGE_TAG=docker.io/chaiit2199/crypto-decision-api:BUILD-COMMIT
+export IMAGE_TAG=docker.io/chaiit2199/crypto-decision:BUILD-COMMIT
 
 docker compose --env-file .env up -d --wait --wait-timeout 120 db
 docker compose --env-file .env pull api
@@ -54,12 +54,12 @@ truy cập từ Internet qua reverse proxy HTTPS.
 
 ## Thủ công và vận hành
 
-Từ repo: `docker build -f apps/api/Dockerfile -t crypto-decision-api:local apps/api`.
+Từ repo: `docker build -f apps/api/Dockerfile -t crypto-decision:local apps/api`.
 
 Tại VPS, đặt docker-compose.yml và deploy-api.sh trong thư mục deploy:
 
 ```bash
-bash deploy-api.sh docker.io/chaiit2199/crypto-decision-api:BUILD-COMMIT
+bash deploy-api.sh docker.io/chaiit2199/crypto-decision:BUILD-COMMIT
 # Những lệnh vận hành sau deploy:
 docker compose --env-file .env --env-file .image.env ps
 docker compose --env-file .env --env-file .image.env logs --tail 100 api
