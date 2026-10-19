@@ -53,6 +53,7 @@ export function MarketDetails({
 
     const analysis = market?.analysis;
     const analysisActive =
+        asset.enabled &&
         Boolean(market?.analysis_enabled) &&
         analysis?.status === "ready" &&
         analysis.freshness === "fresh" &&
@@ -228,7 +229,7 @@ export function MarketDetails({
                         </p>
                     )}
                 </div>
-                <MarketAnalysis market={market} now={now} />
+                <MarketAnalysis market={market} assetEnabled={asset.enabled} now={now} />
             </div>
         </section>
     );

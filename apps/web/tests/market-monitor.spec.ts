@@ -197,6 +197,10 @@ test("watchlist highlights only active Jev BUY/SELL for every row and selected q
     const buyColor = await rows.nth(0).locator(".market-row__signal").evaluate((el) => getComputedStyle(el).color);
     const sellColor = await rows.nth(1).locator(".market-row__signal").evaluate((el) => getComputedStyle(el).color);
     expect(buyColor).not.toBe(sellColor);
+    await page.getByRole("button", { name: "Xem chi tiết FET", exact: true }).click();
+    await expect(page.locator(".market-analysis")).toContainText("Tài sản đã tắt đồng bộ và phân tích");
+    await expect(page.locator(".market-analysis__signal")).toHaveAttribute("data-signal", "WAIT");
+    await expect(page.locator(".market-analysis__signal")).toContainText("không còn hiệu lực");
     await page.getByRole("button", { name: "Xem chi tiết ARB", exact: true }).click();
     await expect(rows.nth(1)).toHaveAttribute("data-selected", "true");
     await expect(rows.nth(0)).toHaveAttribute("data-jev-signal", "BUY");

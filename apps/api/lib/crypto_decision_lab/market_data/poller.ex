@@ -58,16 +58,22 @@ defmodule CryptoDecisionLab.MarketData.Poller do
 
     state = %{state | task: nil}
 
-    if result == {:error, :collector_busy} do
-      # Retry lock acquisition soon during backfill. Sync.poll/0 still enforces
-      # the shared configured deadline before making any Binance request.
-      timer = Process.send_after(self(), :retry_tick, state.retry_interval)
-      {:noreply, %{state | retry_timer: timer}}
-    else
-      if match?({:error, _}, result),
-        do: Logger.warning("price_poll_failed", reason: inspect(result))
+    case result do
+      {:ok, {:not_due, delay}} when is_integer(delay) and delay > 0 ->
+        # A monotonic tick can precede the shared DB deadline by milliseconds.
+        # Recheck at that deadline instead of skipping an entire collection cycle.
+        timer = Process.send_after(self(), :retry_tick, delay)
+        {:noreply, %{state | retry_timer: timer}}
 
-      {:noreply, state}
+      {:error, :collector_busy} ->
+        timer = Process.send_after(self(), :retry_tick, state.retry_interval)
+        {:noreply, %{state | retry_timer: timer}}
+
+      _ ->
+        if match?({:error, _}, result),
+          do: Logger.warning("price_poll_failed", reason: inspect(result))
+
+        {:noreply, state}
     end
   end
 

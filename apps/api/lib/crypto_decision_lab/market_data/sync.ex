@@ -113,7 +113,7 @@ defmodule CryptoDecisionLab.MarketData.Sync do
       next = Collector.state().next_poll_at
 
       if next && DateTime.compare(next, now) == :gt do
-        {:ok, :not_due}
+        {:ok, {:not_due, max(DateTime.diff(next, now, :millisecond), 1)}}
       else
         result = sync_prices()
         # Shared deadline survives process restarts and prevents duplicate node polls.

@@ -20,7 +20,7 @@ defmodule CryptoDecisionLab.Decisions.AnalysisWorker do
       end
 
     case result do
-      {:ok, _} -> :ok
+      {:ok, result} -> if Decisions.awaiting_data?(result), do: {:snooze, 30}, else: :ok
       {:error, :busy} -> {:snooze, 2}
       {:error, reason} -> {:error, reason}
     end

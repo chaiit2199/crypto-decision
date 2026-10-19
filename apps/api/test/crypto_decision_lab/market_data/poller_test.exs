@@ -31,7 +31,34 @@ defmodule CryptoDecisionLab.MarketData.PollerTest do
     send(pid, :tick)
     _ = :sys.get_state(pid)
     refute_receive {:started, _}, 30
-    send(second, {:finish, {:ok, :not_due}})
+    send(second, {:finish, {:ok, :done}})
+    refute_receive {:started, _}, 30
+  end
+
+  test "a tick before the DB deadline retries at that deadline rather than a full interval later" do
+    parent = self()
+
+    run = fn ->
+      send(parent, {:started, self()})
+
+      receive do
+        {:finish, result} -> result
+      end
+    end
+
+    pid =
+      start_supervised!(
+        {Poller,
+         name: :deadline_poller, enabled: true, interval: 300_000, bootstrap: false, run: run}
+      )
+
+    assert_receive {:started, first}
+    send(first, {:finish, {:ok, {:not_due, 10}}})
+    assert_receive {:started, second}, 200
+    send(pid, :tick)
+    _ = :sys.get_state(pid)
+    refute_receive {:started, _}, 30
+    send(second, {:finish, {:ok, 20}})
     refute_receive {:started, _}, 30
   end
 

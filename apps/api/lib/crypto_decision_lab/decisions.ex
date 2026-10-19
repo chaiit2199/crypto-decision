@@ -8,6 +8,7 @@ defmodule CryptoDecisionLab.Decisions do
   alias CryptoDecisionLab.Trading.Assessment
 
   @version "hourly-research-v4-horizon"
+  @pending_data_reasons ~w(missing_snapshots stale_price stale_stats insufficient_candles candle_gap stale_candles)
   @spec enabled?() :: boolean()
   def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
 
@@ -52,7 +53,7 @@ defmodule CryptoDecisionLab.Decisions do
     end
   end
 
-  @doc "Analyze at most once per symbol/slot under a shared database lock. No implicit retry."
+  @doc "Call the provider at most once per symbol/slot; recheck pending inputs under the DB lock."
   @spec analyze(integer(), integer()) :: {:ok, term()} | {:error, term()}
   def analyze(symbol_id, unix_slot) do
     now = Collector.now()
@@ -79,10 +80,17 @@ defmodule CryptoDecisionLab.Decisions do
     end
   end
 
+  @doc "Only missing/stale input is retried; never repeat a completed provider call."
+  @spec awaiting_data?(term()) :: boolean()
+  def awaiting_data?(%Analysis{status: "no_data", reason: reason}),
+    do: reason in @pending_data_reasons
+
+  def awaiting_data?(_), do: false
+
   defp analyze_locked(symbol_id, slot, now) do
     existing = Repo.get_by(Analysis, market_symbol_id: symbol_id, slot: slot)
 
-    if existing do
+    if existing && not awaiting_data?(existing) do
       existing
     else
       config = Application.fetch_env!(:crypto_decision_lab, :jev)
@@ -113,7 +121,9 @@ defmodule CryptoDecisionLab.Decisions do
         end
 
       record =
-        %Analysis{market_symbol_id: symbol_id} |> Analysis.changeset(result) |> Repo.insert!()
+        (existing || %Analysis{market_symbol_id: symbol_id})
+        |> Analysis.changeset(Map.put_new(result, :reason, nil))
+        |> Repo.insert_or_update!()
 
       Logger.info("jev_analysis",
         symbol_id: symbol_id,

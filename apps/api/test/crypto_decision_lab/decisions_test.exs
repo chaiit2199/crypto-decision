@@ -9,7 +9,7 @@ defmodule CryptoDecisionLab.DecisionsTest do
     MockDecisionProvider
   }
 
-  alias CryptoDecisionLab.Decisions.{Analysis, JevProvider}
+  alias CryptoDecisionLab.Decisions.{Analysis, AnalysisWorker, JevProvider}
 
   setup do
     MarketFixtures.configure()
@@ -86,6 +86,47 @@ defmodule CryptoDecisionLab.DecisionsTest do
     )
 
     assert {:ok, %{reason: "stale_price"}} = Decisions.analyze(other.id, slot)
+    refute_receive {:jev_called, _}
+  end
+
+  test "stale data is retried within the same slot, then calls Jev once after refresh", %{
+    symbol: symbol,
+    slot: slot
+  } do
+    AnalysisFixtures.seed(symbol)
+    now = MarketFixtures.now()
+    stale = DateTime.add(now, -(MarketData.price_max_age_seconds() + 1))
+    Repo.update_all(MarketData.LatestPrice, set: [data_at: stale, fetched_at: stale])
+    job = %Oban.Job{args: %{"symbol_id" => symbol.id, "slot" => slot}}
+    assert {:snooze, 30} = AnalysisWorker.perform(job)
+    row = Repo.one!(Analysis)
+    assert row.reason == "stale_price"
+    assert {:snooze, 30} = AnalysisWorker.perform(job)
+    refute_receive {:jev_called, _}
+    Repo.update_all(MarketData.LatestPrice, set: [data_at: now, fetched_at: now])
+    assert :ok = AnalysisWorker.perform(job)
+    assert_receive {:jev_called, _}
+    updated = Repo.one!(Analysis)
+    assert updated.id == row.id
+    assert updated.status == "ready"
+    assert updated.reason == nil
+    assert updated.valid_until == row.valid_until
+    assert :ok = AnalysisWorker.perform(job)
+    refute_receive {:jev_called, _}
+  end
+
+  test "pending input stops retrying when the slot expires or the asset is disabled", %{
+    symbol: symbol,
+    slot: slot
+  } do
+    job = %Oban.Job{args: %{"symbol_id" => symbol.id, "slot" => slot}}
+    assert {:snooze, 30} = AnalysisWorker.perform(job)
+    Process.put(:now, DateTime.from_unix!(slot + Decisions.interval_seconds()))
+    assert :ok = AnalysisWorker.perform(job)
+    Process.put(:now, MarketFixtures.now())
+    Repo.update_all(MarketData.Asset, set: [enabled: false])
+    assert :ok = AnalysisWorker.perform(job)
+    assert Repo.one!(Analysis).reason == "symbol_unavailable"
     refute_receive {:jev_called, _}
   end
 

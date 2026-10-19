@@ -7,6 +7,7 @@ import {
 
 type MarketAnalysisProps = {
     market: Market | undefined;
+    assetEnabled: boolean;
     now: number;
 };
 
@@ -64,20 +65,22 @@ const REASON_LABELS: Record<string, string> = {
     symbol_unavailable: "Cặp giao dịch không khả dụng.",
 };
 
-export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
+export function MarketAnalysis({ market, assetEnabled, now }: MarketAnalysisProps) {
     const analysis = market?.analysis;
     const stale =
         analysis &&
         (analysis.freshness === "stale" ||
             now >= Date.parse(analysis.valid_until));
     const active = Boolean(
-        market?.analysis_enabled && !stale && analysis?.status === "ready",
+        assetEnabled && market?.analysis_enabled && !stale && analysis?.status === "ready",
     );
     const signal = active && analysis ? analysis.signal : "WAIT";
     let notice: string | null = null;
 
     if (!market) {
         notice = "Không có cặp giao dịch khả dụng để phân tích.";
+    } else if (!assetEnabled) {
+        notice = "Tài sản đã tắt đồng bộ và phân tích. Cần bật lại tài sản để nhận kết quả mới.";
     } else if (
         market.analysis_unavailable_reason === "gold_history_unavailable"
     ) {
@@ -110,14 +113,14 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                 <p className="market-analysis__time">
                     Lần đánh giá: {formatChartTime(analysis.analyzed_at)} (giờ
                     Việt Nam)
-                    {stale && " · Đã hết hạn · chờ kết quả mới"}
+                    {stale && " · Đã hết hạn"}
                 </p>
             )}
             {analysis?.status === "ready" && (
                 <>
                     <p className="market-analysis__signal" data-signal={signal}>
                         {!active
-                            ? "Kết quả cũ · chờ đánh giá mới"
+                            ? "Kết quả cũ · không còn hiệu lực"
                             : SIGNAL_LABELS[signal]}
                     </p>
                     {active && (

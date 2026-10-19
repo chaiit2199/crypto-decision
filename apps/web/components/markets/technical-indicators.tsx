@@ -53,8 +53,8 @@ export function TechnicalIndicators({
 
             {!ready && (
                 <p className="technical-indicators__empty" role="status">
-                    Chưa có chỉ báo 1 giờ từ phân tích. Cần Jev/đồng bộ nến đủ
-                    lịch sử — không suy diễn giá trị giả.
+                    Bản phân tích hiện tại chưa có chỉ báo 1 giờ. Biểu đồ có
+                    nến không đồng nghĩa giá và thống kê dùng cho phân tích còn mới.
                 </p>
             )}
 

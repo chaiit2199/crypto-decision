@@ -54,3 +54,15 @@ Luồng tự động vẫn là `AnalysisWorker -> Decisions -> TechnicalAnalysis
 Theo yêu cầu mới, `dev.exs` đặt `price_poll_interval_ms: 60_000` và `analysis_interval_seconds: 120`. Đây là chu kỳ collector giá Binance và chu kỳ phân tích Jev; các endpoint GET vẫn chỉ đọc DB. Các môi trường khác giữ mặc định 30 giây/300 giây. Poller và deadline chống trùng giữa node phải dùng cùng chu kỳ giá. Cron đánh thức dispatcher mỗi phút; dispatcher chỉ xếp job trong phút đầu của slot cấu hình. Slot, kiểm tra job hết hạn và `valid_until` cùng lấy một giá trị cấu hình.
 
 API market bổ sung `analysis_interval_seconds` để UI hiển thị lịch thật, không hardcode 5 phút. `missing_api_key` trong một bản ghi phân tích mô tả lần chạy đó, không phải kiểm tra config hiện tại. Khi key được bổ sung, lần phân tích tiếp theo được bỏ qua cooldown thiếu key cũ; cooldown 401, quota và 429 vẫn có hiệu lực. Không xóa lịch sử lỗi hay gọi Jev từ GET.
+
+## Phục hồi dữ liệu cũ — 2026-10-19
+
+API đang phục vụ frontend tại `api-crypto.9nine.tech` có chu kỳ giá 300 giây, phân tích 900 giây. Tại lần kiểm tra khoảng 21:37 giờ Việt Nam, RENDER có no_data/stale_price từ 21:30 dù giá đã cập nhật lúc 21:31; NEAR/INJ/SEI có asset.enabled=false nên không nằm trong lịch đồng bộ/phân tích.
+
+Sửa Poller: khi timer monotonic thức sớm hơn deadline DB, Sync.poll trả thời gian chờ còn lại; Poller hẹn lại tại deadline thay vì bỏ qua nguyên chu kỳ 300 giây. Vẫn giữ khóa DB và deadline chia sẻ, không thêm request Binance trước hạn.
+
+Sửa Decisions: bản ghi no_data do snapshot thiếu/cũ hoặc nến chưa đủ/gap/stale được đánh giá lại trong cùng slot. Worker snooze 30 giây để chờ đồng bộ; khi có input hợp lệ, update chính bản ghi đó và gọi provider. ready/error vẫn idempotent, không gọi lại Jev trong slot; slot hết hạn dừng retry. Không nâng ngưỡng freshness hoặc giả dữ liệu. Các mã disabled vẫn giữ nguyên lựa chọn người dùng, UI nêu rõ đã tắt thay vì hứa chờ phân tích mới.
+
+Nghiệm thu: test deadline lệch dưới một chu kỳ, không overlap; no_data -> ready cùng ID sau snapshot mới, chỉ một provider call; worker snooze và dừng sau expiry; UI disabled không hiển thị tín hiệu active. Đây là thay đổi code local, cần deploy API để sửa server đang chạy.
+
+Kết quả kiểm tra local: format và compile warnings-as-errors đạt; 20 test Decisions/Poller và test deadline riêng đạt; TypeScript, ESLint các file sửa và browser test watchlist/asset disabled đạt. `mix test` và `mix precommit`: 140 test, 2 lỗi ở kỳ vọng đã có sẵn (`SyncTest` chờ 21 mã trong danh mục hiện có 20; `SourceSyncTest` chờ ngưỡng 180 giây trong khi cấu hình trả 360). Không sửa các kỳ vọng ngoài phạm vi. Database test tạm riêng trên cổng 55433, không chạy test trên DB dev/server.

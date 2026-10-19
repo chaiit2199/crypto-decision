@@ -72,7 +72,8 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     F.symbol()
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
     assert {:ok, 1} = Sync.poll()
-    assert {:ok, :not_due} = Sync.poll()
+    assert {:ok, {:not_due, delay}} = Sync.poll()
+    assert delay > 0
     assert length(Process.get(:http_calls)) == 1
   end
 
@@ -182,7 +183,8 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
     assert {:ok, 1} = Sync.poll()
     Process.put(:now, DateTime.add(F.now(), max(div(interval_s, 2), 1)))
-    assert {:ok, :not_due} = Sync.poll()
+    assert {:ok, {:not_due, delay}} = Sync.poll()
+    assert delay > 0
     Process.put(:now, DateTime.add(F.now(), interval_s))
 
     F.queue([
@@ -256,10 +258,21 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
     assert {:ok, 1} = Sync.poll()
     Process.put(:now, DateTime.add(F.now(), 30))
-    assert {:ok, :not_due} = Sync.poll()
+    assert {:ok, {:not_due, delay}} = Sync.poll()
+    assert delay > 0
     Process.put(:now, DateTime.add(F.now(), 60))
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "101"}])])
     assert {:ok, 1} = Sync.poll()
     assert length(Process.get(:http_calls)) == 2
+  end
+
+  test "a price poll one millisecond before the deadline returns only the remaining delay" do
+    F.symbol()
+    F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
+    assert {:ok, 1} = Sync.poll()
+    interval = Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms)
+    Process.put(:now, DateTime.add(F.now(), interval - 1, :millisecond))
+    assert {:ok, {:not_due, 1}} = Sync.poll()
+    assert length(Process.get(:http_calls)) == 1
   end
 end
