@@ -102,11 +102,6 @@
         }
     }
 
-    &__form {
-        @apply my-4 grid gap-4;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-    }
-
     &__actions {
         @apply flex flex-wrap gap-3;
     }
@@ -118,7 +113,6 @@
             @apply w-full text-left text-sm;
             min-width: 800px;
         }
-
         th,
         td {
             @apply border-b p-3 align-top;
@@ -129,6 +123,108 @@
             @apply block;
             min-width: 220px;
             max-width: 420px;
+        }
+    }
+}
+
+.trading-workbench__diagnostics {
+    @apply mt-6 border-t pt-4;
+    border-color: var(--border);
+
+    > summary {
+        @apply cursor-pointer text-sm font-medium;
+        color: var(--muted);
+    }
+}
+
+.workbench-indicators {
+    @apply my-6;
+
+    h3 {
+        @apply mt-0;
+    }
+
+    .trading-workbench__metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        @media (min-width: 1024px) {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+    }
+}
+
+.trade-planner {
+    @apply mt-6 border-t pt-6;
+    border-color: var(--border);
+
+    h3 {
+        @apply mt-0 text-lg;
+    }
+
+    &__identity {
+        @apply text-xs font-medium;
+        color: var(--muted);
+    }
+
+    &__group {
+        @apply mt-6 min-w-0;
+
+        legend {
+            @apply mb-3 text-sm font-semibold;
+        }
+    }
+
+    &__capital,
+    &__prices {
+        @apply grid gap-4;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 640px) {
+        &__capital {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        &__prices {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    &__field {
+        @apply min-w-0;
+
+        > span {
+            @apply flex flex-wrap items-baseline justify-between gap-2;
+        }
+
+        small {
+            @apply my-0 text-xs;
+        }
+
+        input {
+            @apply min-h-11 text-base tabular-nums;
+        }
+    }
+
+    .trading-workbench__actions {
+        @apply mt-5;
+    }
+
+    button.trade-planner__submit {
+        @apply min-h-11 font-semibold;
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--background);
+    }
+
+    &__result {
+        @apply mt-6 rounded-lg border p-4;
+        border-color: var(--border);
+        background: var(--background);
+
+        h4 {
+            @apply text-base font-semibold;
         }
     }
 }

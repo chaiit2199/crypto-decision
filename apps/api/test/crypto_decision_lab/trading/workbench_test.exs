@@ -239,6 +239,30 @@ defmodule CryptoDecisionLab.Trading.WorkbenchTest do
     assert {:ok, [_], _} = Trading.opportunities(%{})
   end
 
+  test "intraday keeps hourly reference indicators without Jev or Coinbase short candles" do
+    symbol =
+      MarketFixtures.symbol()
+      |> Ecto.Changeset.change(exchange: "coinbase", symbol: "BTCUSD", quote_asset: "USD")
+      |> Repo.update!()
+
+    AnalysisFixtures.seed(symbol)
+    params = %{"exchange" => "coinbase", "style" => "intraday"}
+
+    assert {:ok, report, _} = Trading.workbench(symbol.symbol, params)
+    assert report["frames"]["1h"]["status"] == "ready"
+    assert report["frames"]["1h"]["features"]["rsi14"] != nil
+    assert report["frames"]["1h"]["features"]["ema9"] != nil
+    assert report["frames"]["4h"]["status"] == "no_data"
+    assert report["frames"]["5m"]["status"] == "no_data"
+    assert report["liquidity"]["status"] == "unsupported"
+    assert report["trade_eligibility"] == "NO_DATA"
+    assert report["ai_signal"] == "NO_DATA"
+    refute report["execution_allowed"]
+
+    assert {:ok, [row], _} = Trading.opportunities(params)
+    refute Map.has_key?(row["frames"], "1h")
+  end
+
   test "fresh depth and short frames remain research only and never borrow another market's book" do
     symbol = MarketFixtures.symbol()
     AnalysisFixtures.seed(symbol)

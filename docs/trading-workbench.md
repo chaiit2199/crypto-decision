@@ -28,6 +28,38 @@ Official contract checked: [Binance public market data](https://developers.binan
 
 ## Contracts
 
+### Workbench usability update
+
+The detail workbench always includes a same-market `1h` reference in `frames`, even
+when the selected style uses 4h/15m/5m. It is computed from stored closed candles,
+independently of Jev; adding this reference does not change the style's risk gates
+or the scanner workload. No storage changes or migrations are needed.
+
+The UI shows one indicator timeframe at a time, initially choosing an available
+frame, with values and one-line explanations visible. Missing, stale and unsupported
+data have explicit explanations. Coinbase short candles and order books remain
+unsupported by the current collectors; hourly reference indicators do not substitute
+for missing entry/setup data. Diagnostic flags and simulation history are collapsed.
+
+The hypothetical Spot calculator separates capital/risk from entry/stop/target;
+fees and slippage are editable in a collapsed section with the assumptions visible
+in its summary. Copying a fresh current price is an explicit action; refreshes never
+overwrite user inputs. Changing research style preserves the form, while changing
+market resets it. Results prioritize position value and net loss/profit; further
+calculation details remain expandable. Acceptance covers unavailable data, visible
+hourly indicators with Jev disabled, cost editing, result invalidation, market
+identity and form persistence across style changes.
+
+Verification for this usability update: TypeScript and targeted ESLint passed;
+both Playwright workbench tests passed using synthetic responses, including the
+390px layout and Coinbase hourly indicators with Jev disabled. Backend compile
+with warnings-as-errors passed. The related backend suite ran 15 tests with one
+failure in existing liquidity timestamp storage (`:utc_datetime_usec` rejects the
+HTTP date's second precision); the new hourly-reference test passed. Full
+`mix precommit` ran 135 tests with eight failures: that liquidity error plus seven
+asset-count, polling-interval and freshness expectation mismatches already noted
+below. Tests ran on isolated PostgreSQL at port 55439; no VPS data was accessed.
+
 `GET /api/markets/:symbol/workbench?exchange=binance&style=intraday`: bounded stored-data report; styles scalping (1h/15m/5m), intraday (4h/15m/5m), swing (1d/4h/1h). Explicit exchange/symbol/quote/spot identity, cutoff, per-timeframe status/features, liquidity, setup, Jev assessment, null uncalibrated forecasts, research-only eligibility and risk flags.
 
 `GET /api/opportunities?exchange=binance&style=intraday`: bounded active universe sorted by readiness and net reward/risk; missing/stale rows remain visible with reasons. These are research candidates, never execution approval.

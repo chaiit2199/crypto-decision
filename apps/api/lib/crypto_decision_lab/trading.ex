@@ -28,7 +28,16 @@ defmodule CryptoDecisionLab.Trading do
   def workbench(symbol, params) do
     with {:ok, market, _} <- MarketData.get_market(symbol, params),
          {:ok, frames} <- style(params) do
-      {:ok, report(market, Map.get(params, "style", "intraday"), frames, Collector.now()), %{}}
+      now = Collector.now()
+      report = report(market, Map.get(params, "style", "intraday"), frames, now)
+
+      # Keep hourly indicators available independently of Jev and the style's risk gates.
+      report =
+        Map.update!(report, "frames", fn series ->
+          Map.put_new_lazy(series, "1h", fn -> frame(market.id, "1h", now) end)
+        end)
+
+      {:ok, report, %{}}
     end
   end
 
