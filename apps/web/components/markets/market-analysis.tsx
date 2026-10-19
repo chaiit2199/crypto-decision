@@ -186,7 +186,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                 <p className="market-analysis__time">
                     Lần đánh giá: {formatChartTime(analysis.analyzed_at)}{" "}
                     (UTC+7)
-                    {stale && " · Đã hết hạn — chờ kết quả mới"}
+                    {stale && " · Đã hết hạn - chờ kết quả mới"}
                 </p>
             )}
             {analysis?.status === "ready" && (

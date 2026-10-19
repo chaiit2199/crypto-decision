@@ -1,4 +1,4 @@
-# Trade Desk Discipline — Priority 1
+# Trade Desk Discipline - Priority 1
 
 Personal Spot research desk for discretionary holds of roughly 30 minutes to several hours. Extends the existing Trading Workbench. No order execution.
 
@@ -12,9 +12,9 @@ Personal Spot research desk for discretionary holds of roughly 30 minutes to sev
 
 ## Reused modules
 
-- `MarketData.Liquidity` / `LiquiditySnapshot` — same-snapshot depth; no Coinbase book.
-- `Trading.Plan` — Decimal sizing; primary `take_profit` remains the R:R gate target (TP2).
-- `Trading.Assessment` — deterministic gates and ATR scenario plan.
+- `MarketData.Liquidity` / `LiquiditySnapshot` - same-snapshot depth; no Coinbase book.
+- `Trading.Plan` - Decimal sizing; primary `take_profit` remains the R:R gate target (TP2).
+- `Trading.Assessment` - deterministic gates and ATR scenario plan.
 - `Trading.workbench` / opportunities / Next `TradingWorkbench` UI.
 
 ## Contract additions (additive)

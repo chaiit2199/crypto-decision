@@ -1,4 +1,4 @@
-# Trading workbench — Spot research v1
+# Trading workbench - Spot research v1
 
 Requested expansion on 2026-10-19 follows the supplied audit (P0–P3). Existing Phase 1, hourly Jev and Trading Knowledge remain the foundations. No order execution or Futures integration is introduced.
 

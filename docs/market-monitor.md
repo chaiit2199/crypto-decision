@@ -1,6 +1,6 @@
 # Bảng giá development
 
-## Cập nhật giao diện và đồng bộ — 2026-10-19
+## Cập nhật giao diện và đồng bộ - 2026-10-19
 
 - Chu kỳ hiện tại trong backend: giá 300 giây, thống kê 24h mỗi 5 phút, nến 1H vào phút 01 mỗi giờ; Jev theo slot 15 phút. Không thay lịch collector trong đợt chỉnh UI này.
 - Frontend lấy chu kỳ từ `status.price_poll_interval_seconds`, truyền cùng chu kỳ xuống biểu đồ; mỗi request hoàn tất mới hẹn lần tiếp theo. Giữ chu kỳ hợp lệ gần nhất khi API lỗi, mặc định 300 giây khi chưa có status. Nút làm mới tải lại cả danh mục và lịch sử đang xem. Đồng hồ freshness cập nhật riêng mỗi giây, không gọi mạng.

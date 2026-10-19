@@ -1,17 +1,22 @@
 import type { Market } from "@/lib/api/types";
 
-const indicatorFormat = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 8 });
-const percentageFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const indicatorFormat = new Intl.NumberFormat("en-US", {
+    maximumSignificantDigits: 8,
+});
+const percentageFormat = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
 
 /** Rounded display only; preserve the original Decimal value in the response and tooltip. */
 export function formatPercentage(value: string | undefined): string {
-    return value === undefined ? "—" : percentageFormat.format(Number(value));
+    return value === undefined ? "-" : percentageFormat.format(Number(value));
 }
 
 /** Display only; the original Decimal string remains available in the API and title. */
 export function formatIndicator(value: string | null | undefined): string {
     if (value == null) {
-        return "—";
+        return "-";
     }
 
     return indicatorFormat.format(Number(value));
@@ -20,7 +25,7 @@ export function formatIndicator(value: string | null | undefined): string {
 /** Group digits without converting financial decimal strings through a float. */
 export function formatDecimal(value: string | null | undefined): string {
     if (value == null) {
-        return "—";
+        return "-";
     }
 
     const [whole, fraction = ""] = value.split(".");
@@ -43,12 +48,21 @@ export function formatTime(value: string | null | undefined): string {
     }).format(new Date(value));
 }
 
-export function priceStatus(market: Market | undefined, now: number): "fresh" | "stale" | "missing" {
+export function priceStatus(
+    market: Market | undefined,
+    now: number,
+): "fresh" | "stale" | "missing" {
     if (!market?.latest_price) {
         return "missing";
     }
 
-    if (now - Date.parse(market.latest_price.data_at ?? market.latest_price.fetched_at) > market.price_max_age_seconds * 1000) {
+    if (
+        now -
+            Date.parse(
+                market.latest_price.data_at ?? market.latest_price.fetched_at,
+            ) >
+        market.price_max_age_seconds * 1000
+    ) {
         return "stale";
     }
 

@@ -1,5 +1,10 @@
 import type { Asset } from "@/lib/api/types";
-import { formatDecimal, formatPercentage, formatTime, priceStatus } from "@/lib/format/market";
+import {
+    formatDecimal,
+    formatPercentage,
+    formatTime,
+    priceStatus,
+} from "@/lib/format/market";
 import { selectedMarket } from "@/lib/markets/selected-market";
 import type { QuoteAsset } from "@/lib/markets/selected-market";
 
@@ -20,12 +25,19 @@ const STATUS_LABEL = {
     missing: "Chờ dữ liệu",
 };
 
-export function MarketRow({ asset, quoteAsset, now, metadataReady, selected, onSelect }: MarketRowProps) {
+export function MarketRow({
+    asset,
+    quoteAsset,
+    now,
+    metadataReady,
+    selected,
+    onSelect,
+}: MarketRowProps) {
     const market = selectedMarket(asset, quoteAsset);
     const freshness = priceStatus(market, now);
     const change = market?.ticker_stats?.price_change_percent;
     const negative = change?.startsWith("-");
-    let changeLabel = "—";
+    let changeLabel = "-";
 
     if (change !== undefined) {
         const sign = negative ? "" : "+";
@@ -34,7 +46,8 @@ export function MarketRow({ asset, quoteAsset, now, metadataReady, selected, onS
 
     const statsStale =
         market?.stats_freshness.status !== "fresh" ||
-        (market.ticker_stats !== null && now - Date.parse(market.ticker_stats.fetched_at) > 600_000);
+        (market.ticker_stats !== null &&
+            now - Date.parse(market.ticker_stats.fetched_at) > 600_000);
     let label = STATUS_LABEL[freshness];
 
     if (!asset.enabled) {
@@ -44,7 +57,11 @@ export function MarketRow({ asset, quoteAsset, now, metadataReady, selected, onS
     }
 
     return (
-        <tr className="market-row" data-selected={selected} onClick={() => onSelect(asset.symbol)}>
+        <tr
+            className="market-row"
+            data-selected={selected}
+            onClick={() => onSelect(asset.symbol)}
+        >
             <td>
                 <div className="market-row__asset">
                     <span className="market-row__monogram" aria-hidden="true">
@@ -64,26 +81,53 @@ export function MarketRow({ asset, quoteAsset, now, metadataReady, selected, onS
                     </div>
                 </div>
             </td>
-            <td className="market-row__pair">{market?.symbol ?? "—"}</td>
-            <td className="market-row__number market-row__price" data-freshness={freshness}>
+            <td className="market-row__pair">{market?.symbol ?? "-"}</td>
+            <td
+                className="market-row__number market-row__price"
+                data-freshness={freshness}
+            >
                 <PriceFlash value={market?.latest_price?.price} />
             </td>
             <td className="market-row__number">
-                <span className="market-row__change" data-direction={negative ? "down" : "up"} title={change}>
+                <span
+                    className="market-row__change"
+                    data-direction={negative ? "down" : "up"}
+                    title={change}
+                >
                     {changeLabel}
                 </span>
-                {market?.ticker_stats && statsStale && <span className="market-row__old">Số liệu cũ</span>}
+                {market?.ticker_stats && statsStale && (
+                    <span className="market-row__old">Số liệu cũ</span>
+                )}
             </td>
             <td className="market-row__number market-row__volume">
-                {formatDecimal(market?.ticker_stats?.quote_volume ?? market?.ticker_stats?.base_volume)}
-                {market?.ticker_stats && <span className="market-row__old">{market.ticker_stats.quote_volume == null ? asset.symbol : quoteAsset}</span>}
+                {formatDecimal(
+                    market?.ticker_stats?.quote_volume ??
+                        market?.ticker_stats?.base_volume,
+                )}
+                {market?.ticker_stats && (
+                    <span className="market-row__old">
+                        {market.ticker_stats.quote_volume == null
+                            ? asset.symbol
+                            : quoteAsset}
+                    </span>
+                )}
             </td>
             <td>
                 <span className="market-row__status" data-status={freshness}>
                     {label}
                 </span>
-                <time className="market-row__time" dateTime={(market?.latest_price?.data_at ?? market?.latest_price?.fetched_at)}>
-                    {formatTime((market?.latest_price?.data_at ?? market?.latest_price?.fetched_at))}
+                <time
+                    className="market-row__time"
+                    dateTime={
+                        market?.latest_price?.data_at ??
+                        market?.latest_price?.fetched_at
+                    }
+                >
+                    {formatTime(
+                        market?.latest_price?.data_at ??
+                            market?.latest_price?.fetched_at,
+                    )}
                 </time>
             </td>
         </tr>

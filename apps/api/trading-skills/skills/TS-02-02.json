@@ -1,79 +1,71 @@
 {
-  "id": "TS-02-02",
-  "version": "1.0.0",
-  "title": "EMA alignment pullback short — volume confirmed",
-  "category": "trend_following",
-  "direction": "short",
-  "market": "spot",
-  "timeframes": [
-    "1h",
-    "4h"
-  ],
-  "market_regime_context": "bear_trend",
-  "hypothesis": "Evaluate a short-side ema alignment pullback short setup with volume expansion. This is a candidate rule, not verified alpha.",
-  "entry_conditions": {
-    "all": [
-      {
-        "feature": "ema20",
-        "operator": "lt_feature",
-        "other_feature": "ema50"
-      },
-      {
-        "feature": "close_to_ema20_abs_pct",
-        "operator": "lte",
-        "value": 1.0
-      },
-      {
-        "feature": "close",
-        "operator": "lt_feature",
-        "other_feature": "ema50"
-      }
-    ]
-  },
-  "confirmation_conditions": {
-    "all": [
-      {
-        "feature": "volume_ratio20",
-        "operator": "gt",
-        "value": 1.5
-      }
-    ]
-  },
-  "invalidation": {
-    "any": [
-      {
-        "feature": "close",
-        "operator": "gt_feature",
-        "other_feature": "ema50"
-      }
-    ]
-  },
-  "trade_plan_template": {
-    "entry": "next_candle_open_after_signal",
-    "stop_loss": "last_confirmed_swing_or_1_5_atr",
-    "take_profit": "minimum_2R_if_market_structure_allows",
-    "minimum_rr": 2.0,
-    "max_risk_per_trade_pct": 0.5,
-    "entry_requires_confirmation": true
-  },
-  "evidence": {
-    "status": "unvalidated",
-    "source_type": "synthesized_rule_hypothesis",
-    "backtested": false,
-    "sample_size": 0,
-    "win_rate": null,
-    "profit_factor": null,
-    "out_of_sample_sharpe": null
-  },
-  "limitations": [
-    "Not a proven edge",
-    "Spot short signals are exit/avoid-long observations, not executable short orders",
-    "Unavailable features imply NO_DATA, not false"
-  ],
-  "tags": [
-    "trend_following",
-    "bear_trend",
-    "volume_confirmed",
-    "candidate"
-  ]
+    "id": "TS-02-02",
+    "version": "1.0.0",
+    "title": "EMA alignment pullback short - volume confirmed",
+    "category": "trend_following",
+    "direction": "short",
+    "market": "spot",
+    "timeframes": ["1h", "4h"],
+    "market_regime_context": "bear_trend",
+    "hypothesis": "Evaluate a short-side ema alignment pullback short setup with volume expansion. This is a candidate rule, not verified alpha.",
+    "entry_conditions": {
+        "all": [
+            {
+                "feature": "ema20",
+                "operator": "lt_feature",
+                "other_feature": "ema50"
+            },
+            {
+                "feature": "close_to_ema20_abs_pct",
+                "operator": "lte",
+                "value": 1.0
+            },
+            {
+                "feature": "close",
+                "operator": "lt_feature",
+                "other_feature": "ema50"
+            }
+        ]
+    },
+    "confirmation_conditions": {
+        "all": [
+            {
+                "feature": "volume_ratio20",
+                "operator": "gt",
+                "value": 1.5
+            }
+        ]
+    },
+    "invalidation": {
+        "any": [
+            {
+                "feature": "close",
+                "operator": "gt_feature",
+                "other_feature": "ema50"
+            }
+        ]
+    },
+    "trade_plan_template": {
+        "entry": "next_candle_open_after_signal",
+        "stop_loss": "last_confirmed_swing_or_1_5_atr",
+        "take_profit": "minimum_2R_if_market_structure_allows",
+        "minimum_rr": 2.0,
+        "max_risk_per_trade_pct": 0.5,
+        "entry_requires_confirmation": true
+    },
+    "evidence": {
+        "status": "unvalidated",
+        "source_type": "synthesized_rule_hypothesis",
+        "backtested": false,
+        "sample_size": 0,
+        "win_rate": null,
+        "profit_factor": null,
+        "out_of_sample_sharpe": null
+    },
+    "limitations": [
+        "Not a proven edge",
+        "Spot short signals are exit/avoid-long observations, not executable short orders",
+        "Unavailable features imply NO_DATA, not false"
+    ],
+    "tags": ["trend_following", "bear_trend", "volume_confirmed", "candidate"]
 }

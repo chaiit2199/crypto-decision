@@ -4,12 +4,12 @@
 
 Nguồn chính thức: [Binance Spot REST](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md), [public data host](https://github.com/binance/binance-spot-api-docs/blob/master/faqs/market_data_only.md). Đã đối chiếu tài liệu và JSON live ngày 2026-10-17.
 
-| Endpoint | Tham số sử dụng | Weight |
-| --- | --- | --- |
-| exchangeInfo | permissions=SPOT, showPermissionSets=false | 20 |
-| ticker/price | symbols là JSON array | 4 |
-| ticker/24hr | symbols theo batch 1–20, type=FULL | 2 mỗi batch |
-| klines | symbol, interval=1h, startTime, endTime, limit=1000 | 2 |
+| Endpoint     | Tham số sử dụng                                     | Weight      |
+| ------------ | --------------------------------------------------- | ----------- |
+| exchangeInfo | permissions=SPOT, showPermissionSets=false          | 20          |
+| ticker/price | symbols là JSON array                               | 4           |
+| ticker/24hr  | symbols theo batch 1–20, type=FULL                  | 2 mỗi batch |
+| klines       | symbol, interval=1h, startTime, endTime, limit=1000 | 2           |
 
 Không dùng danh sách symbol suy đoán để gọi exchangeInfo; tải metadata SPOT rồi lọc base asset và quote USDT. Giá gửi một batch, thống kê chia tối đa 20 symbol để tránh mức weight 40 cho 21–100 symbol. Không có authenticated endpoint.
 
@@ -53,7 +53,7 @@ Dev bật sync mặc định; tắt bằng `MARKET_SYNC_ENABLED=false`. Producti
 
 Bootstrap enqueue prices/stats trước backfill; backfill và repair có priority 3, công việc hiện tại priority 0 (Oban ưu tiên số nhỏ). Poll giá vẫn dùng process 5 phút và advisory lock; nếu lock bận, thử lại khóa sau 1 giây, không tạo request Binance trước deadline 5 phút. Web chỉ đọc API mỗi 5 phút; xem [market-monitor.md](market-monitor.md).
 
-## Chu kỳ hiện tại — 2026-10-18
+## Chu kỳ hiện tại - 2026-10-18
 
 Theo yêu cầu mới: collector giá và thống kê 24h chạy mỗi 5 phút; dashboard đọc API thị trường và lịch sử nến mỗi 5 phút sau khi request trước hoàn tất. Lần mở trang, đổi cặp/khung nến hoặc tải lại thủ công vẫn gọi ngay. Jev dùng slot UTC 15 phút (00/15/30/45), dispatcher kiểm tra mỗi phút nhưng chỉ xếp job ở phút đầu slot. GET chỉ đọc dữ liệu đã lưu.
 

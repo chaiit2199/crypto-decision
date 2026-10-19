@@ -12,17 +12,23 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
             <header>
                 <h3>Sổ lệnh hiển thị</h3>
                 <p>
-                    Bid/ask resting orders từ một ảnh chụp depth. Không phải số người mua/bán
-                    và không phải order block trên nến.
+                    Bid/ask resting orders từ một ảnh chụp depth. Không phải số
+                    người mua/bán và không phải order block trên nến.
                 </p>
             </header>
 
             {liquidity.status === "unsupported" && (
-                <p>Nguồn này chưa hỗ trợ sổ lệnh Binance. Không mượn depth từ sàn khác.</p>
+                <p>
+                    Nguồn này chưa hỗ trợ sổ lệnh Binance. Không mượn depth từ
+                    sàn khác.
+                </p>
             )}
             {liquidity.status === "missing" && <p>Chưa đồng bộ sổ lệnh.</p>}
             {liquidity.status === "stale" && (
-                <p>Sổ lệnh đã cũ; số liệu chỉ để tham khảo, không dùng để vào lệnh.</p>
+                <p>
+                    Sổ lệnh đã cũ; số liệu chỉ để tham khảo, không dùng để vào
+                    lệnh.
+                </p>
             )}
 
             {["fresh", "stale"].includes(liquidity.status) && (
@@ -31,7 +37,8 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
                         <div>
                             <dt>Best Bid / Ask</dt>
                             <dd>
-                                {formatIndicator(liquidity.bid)} / {formatIndicator(liquidity.ask)}
+                                {formatIndicator(liquidity.bid)} /{" "}
+                                {formatIndicator(liquidity.ask)}
                             </dd>
                         </div>
                         <div>
@@ -57,14 +64,17 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
                         <div>
                             <dt>Imbalance toàn sổ</dt>
                             <dd>{formatIndicator(liquidity.imbalance)}</dd>
-                            <dd>Không đồng nghĩa giá sẽ tăng khi imbalance dương.</dd>
+                            <dd>
+                                Không đồng nghĩa giá sẽ tăng khi imbalance
+                                dương.
+                            </dd>
                         </div>
                         <div>
                             <dt>Ảnh chụp</dt>
                             <dd>
                                 {liquidity.fetched_at
                                     ? `${formatTime(liquidity.fetched_at)} · UTC+7`
-                                    : "—"}
+                                    : "-"}
                             </dd>
                         </div>
                     </dl>
@@ -72,7 +82,10 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
                     {liquidity.bands && liquidity.bands.length > 0 && (
                         <div className="order-book-panel__bands">
                             <h4>Thanh khoản theo khoảng cách mid</h4>
-                            <p>Tường bid/ask nhìn thấy không được gắn nhãn support/resistance.</p>
+                            <p>
+                                Tường bid/ask nhìn thấy không được gắn nhãn
+                                support/resistance.
+                            </p>
                             <table>
                                 <thead>
                                     <tr>
@@ -86,9 +99,21 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
                                     {liquidity.bands.map((band) => (
                                         <tr key={band.band_pct}>
                                             <td>±{band.band_pct}%</td>
-                                            <td>{formatIndicator(band.bid_notional)}</td>
-                                            <td>{formatIndicator(band.ask_notional)}</td>
-                                            <td>{formatIndicator(band.imbalance)}</td>
+                                            <td>
+                                                {formatIndicator(
+                                                    band.bid_notional,
+                                                )}
+                                            </td>
+                                            <td>
+                                                {formatIndicator(
+                                                    band.ask_notional,
+                                                )}
+                                            </td>
+                                            <td>
+                                                {formatIndicator(
+                                                    band.imbalance,
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

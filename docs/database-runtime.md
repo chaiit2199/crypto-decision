@@ -1,4 +1,4 @@
-# Database — cấu hình tương tự crypto-decision
+# Database - cấu hình tương tự crypto-decision
 
 ## Cấu trúc đã chọn
 

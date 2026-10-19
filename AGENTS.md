@@ -1,10 +1,10 @@
-# Crypto Decision Lab — Quy tắc phát triển
+# Crypto Decision Lab - Quy tắc phát triển
 
 Áp dụng cho toàn bộ monorepo Crypto Decision Lab. Đây là ứng dụng cá nhân hỗ trợ nghiên cứu và ra quyết định giao dịch tiền mã hóa, không phải SaaS đa người thuê. Code mới và code được chỉnh sửa phải tuân theo các quy tắc dưới đây. Không format hoặc refactor hàng loạt file ngoài phạm vi công việc.
 
 ## A. Phạm vi và thứ tự triển khai
 
-- Chỉ triển khai **Phase 1 — Market Data Foundation** khi chưa có yêu cầu mở rộng.
+- Chỉ triển khai **Phase 1 - Market Data Foundation** khi chưa có yêu cầu mở rộng.
 - Phase 1 gồm Phoenix API, PostgreSQL, dữ liệu Binance, lịch đồng bộ, backfill, kiểm tra chất lượng dữ liệu và kiểm thử.
 - Các giai đoạn sau lần lượt là Technical Analysis, Jev Decision Engine, Next.js Dashboard, Backtesting và Paper Trading. Chưa triển khai các phần này trong Phase 1.
 - Không thực hiện lệnh giao dịch thật, không kết nối API đặt lệnh và không hứa hẹn lợi nhuận.
@@ -33,13 +33,13 @@ AGENTS.md
 - Backend sở hữu đồng bộ dữ liệu. Không gọi Binance hoặc Jev trực tiếp từ client component.
 - Tách HTTP adapter khỏi nghiệp vụ; tách Jev khỏi engine tính chỉ báo.
 
-| Context | Trách nhiệm |
-| --- | --- |
-| `MarketData` | Asset, symbol, giá mới nhất, thống kê 24h, candle, trạng thái đồng bộ và chất lượng dữ liệu. |
-| `TechnicalAnalysis` | Chỉ báo, snapshot, feature và screener; giai đoạn sau. |
-| `Decisions` | Provider behaviour, Jev adapter, chuẩn hóa và lưu quyết định, chính sách hiệu lực; giai đoạn sau. |
-| `Backtesting` | Replay lịch sử, baseline và đánh giá hiệu suất; giai đoạn sau. |
-| `PaperTrading` | Lệnh ảo, vị thế, mô phỏng khớp lệnh và danh mục; giai đoạn sau. |
+| Context             | Trách nhiệm                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `MarketData`        | Asset, symbol, giá mới nhất, thống kê 24h, candle, trạng thái đồng bộ và chất lượng dữ liệu.      |
+| `TechnicalAnalysis` | Chỉ báo, snapshot, feature và screener; giai đoạn sau.                                            |
+| `Decisions`         | Provider behaviour, Jev adapter, chuẩn hóa và lưu quyết định, chính sách hiệu lực; giai đoạn sau. |
+| `Backtesting`       | Replay lịch sử, baseline và đánh giá hiệu suất; giai đoạn sau.                                    |
+| `PaperTrading`      | Lệnh ảo, vị thế, mô phỏng khớp lệnh và danh mục; giai đoạn sau.                                   |
 
 ## C. Quy tắc Elixir và backend
 
@@ -56,14 +56,14 @@ AGENTS.md
 
 ## D. Danh mục tài sản và Binance
 
-Danh mục nghiên cứu hiện tại (21 asset, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`:
+Danh mục nghiên cứu hiện tại (20 asset, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync:
 
-| Nhóm | Asset |
-| --- | --- |
-| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER |
-| Tiềm năng cao | TIA, ONDO, PYTH, EIGEN, ASI |
-| Vốn hóa vừa | TAO, IMX, BEAM, AKT, HNT |
-| Mở rộng | IO, MKR, CFG, HONEY, BONK |
+| Nhóm                   | Asset                                |
+| ---------------------- | ------------------------------------ |
+| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER       |
+| Tiềm năng cao          | TIA, ONDO, PYTH, EIGEN, FET, NEAR    |
+| Vốn hóa vừa            | TAO, IMX, INJ, SEI                   |
+| Mở rộng                | IO, BONK, WIF, WLD                   |
 
 Seed upsert danh mục này và `enabled=false` các asset đã bị gỡ khỏi `@groups`. Không xóa lịch sử nến/phân tích. Cặp Spot USDT thực tế do `exchangeInfo` xác minh; mã không có trên Binance vẫn giữ trong danh mục với trạng thái không khả dụng.
 
@@ -98,14 +98,14 @@ Các bảng Phase 1: `market_assets`, `market_symbols`, `market_latest_prices`, 
 
 ## F. Lịch đồng bộ
 
-| Dữ liệu | Tần suất ban đầu |
-| --- | --- |
-| Exchange metadata | Mỗi ngày |
-| Latest prices | Mỗi 30 giây |
-| Rolling 24h statistics | Mỗi 5 phút |
-| Candle 1H | Sau khi candle đóng |
-| Historical backfill | Khởi tạo và theo yêu cầu |
-| Data integrity | Mỗi ngày |
+| Dữ liệu                | Tần suất ban đầu         |
+| ---------------------- | ------------------------ |
+| Exchange metadata      | Mỗi ngày                 |
+| Latest prices          | Mỗi 30 giây              |
+| Rolling 24h statistics | Mỗi 5 phút               |
+| Candle 1H              | Sau khi candle đóng      |
+| Historical backfill    | Khởi tạo và theo yêu cầu |
+| Data integrity         | Mỗi ngày                 |
 
 - Dùng Oban cho job bền vững, backfill và lịch phù hợp. Không giả định Oban Cron hỗ trợ chu kỳ dưới một phút.
 - Poll giá bằng supervised process với monotonic scheduling, không cho lần chạy chồng lấn; xác định cách xử lý khi request kéo dài quá chu kỳ.
@@ -183,19 +183,19 @@ Các mục 1–9 bên dưới áp dụng cho code trong `apps/web/` khi triển 
 
 ## 3. Cấu trúc dự án
 
-| Vị trí | Trách nhiệm |
-| --- | --- |
-| `app/` | Route, metadata, layout, đọc params và tải dữ liệu ban đầu cho trang. Giữ page gọn. |
-| `components/<nghiệp vụ>/` | Hiển thị, state và tương tác của từng nghiệp vụ. |
-| `components/ui/` | Thành phần shadcn/ui và UI dùng chung; kiểm tra component đã có trước khi tạo mới. |
-| `lib/api/` | Hàm gọi API và Server Actions theo nghiệp vụ. |
-| `lib/api/types.ts` | Kiểu dữ liệu request và response dùng chung. |
-| `lib/cache/` | Cache theo nghiệp vụ, ví dụ `markets.ts`; khai báo khóa cache dùng chung trong `cache_key.ts`. |
-| `lib/http/` | HTTP client và xử lý giao tiếp với backend. |
-| `lib/server-actions.ts` | Cơ chế xử lý kết quả và lỗi Server Actions dùng chung. |
-| `lib/format/` | Format tiền, số lượng, ngày và đơn vị. |
-| `lib/dashboard/` | Cấu hình menu, header và sự kiện header. |
-| `styles/components/` | SCSS theo nhóm component, dùng lại class hiện có. |
+| Vị trí                    | Trách nhiệm                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `app/`                    | Route, metadata, layout, đọc params và tải dữ liệu ban đầu cho trang. Giữ page gọn.            |
+| `components/<nghiệp vụ>/` | Hiển thị, state và tương tác của từng nghiệp vụ.                                               |
+| `components/ui/`          | Thành phần shadcn/ui và UI dùng chung; kiểm tra component đã có trước khi tạo mới.             |
+| `lib/api/`                | Hàm gọi API và Server Actions theo nghiệp vụ.                                                  |
+| `lib/api/types.ts`        | Kiểu dữ liệu request và response dùng chung.                                                   |
+| `lib/cache/`              | Cache theo nghiệp vụ, ví dụ `markets.ts`; khai báo khóa cache dùng chung trong `cache_key.ts`. |
+| `lib/http/`               | HTTP client và xử lý giao tiếp với backend.                                                    |
+| `lib/server-actions.ts`   | Cơ chế xử lý kết quả và lỗi Server Actions dùng chung.                                         |
+| `lib/format/`             | Format tiền, số lượng, ngày và đơn vị.                                                         |
+| `lib/dashboard/`          | Cấu hình menu, header và sự kiện header.                                                       |
+| `styles/components/`      | SCSS theo nhóm component, dùng lại class hiện có.                                              |
 
 - Giữ cách đặt tên file của thư mục đang sửa; không đổi tên hàng loạt để thống nhất hình thức.
 - Component và type dùng PascalCase; biến và hàm dùng camelCase; hằng số cố định dùng UPPER_SNAKE_CASE.

@@ -1,4 +1,4 @@
-# Crypto Decision Lab — Phase 1
+# Crypto Decision Lab - Phase 1
 
 This document records the Phase 1 foundation. Later user-requested extensions are documented in [Jev integration](jev-integration.md) and [Trading Knowledge Engine](trading-knowledge-engine.md).
 
@@ -110,13 +110,13 @@ ERD thể hiện quan hệ và field chính. Migration đã bổ sung quote volu
 
 Phase 1 dùng prefix `/api`; thay đổi không tương thích sau này dùng `/api/v2`. Decimal trả dưới dạng chuỗi; timestamp ISO 8601 UTC. Response thành công dùng `{data, meta}`; lỗi dùng `{error: {code, message}}`. Không đưa upstream payload, secret hoặc stack trace vào lỗi public.
 
-| Endpoint | Contract |
-| --- | --- |
-| `GET /api/markets` | Danh mục asset, symbol được xác minh, latest price, 24h stats; `page` >= 1, `page_size` 1–100, mặc định 32. Asset chưa có symbol vẫn xuất hiện với dữ liệu null và status rõ ràng. |
-| `GET /api/markets/:symbol` | Binance symbol được xác minh, ví dụ BTCUSDT; snapshot và freshness; không tìm thấy trả 404. |
-| `GET /api/markets/:symbol/candles` | `timeframe=1h|4h|1d`, `from`, `to` UTC, `limit` 1–1000; mặc định 1h và 100 candle gần nhất, thứ tự tăng dần. Chặn khoảng truy vấn quá lớn. Tổng hợp thiếu candle trả lỗi dữ liệu thiếu có cấu trúc. |
-| `GET /api/health` | Kiểm tra ứng dụng và DB; DB không sẵn sàng trả 503. |
-| `GET /api/system/market-data-status` | Last success/attempt, freshness, trạng thái backfill, gap count, lỗi đã lọc và tình trạng collector. |
+| Endpoint                             | Contract                                                                                                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/markets`                   | Danh mục asset, symbol được xác minh, latest price, 24h stats; `page` >= 1, `page_size` 1–100, mặc định 32. Asset chưa có symbol vẫn xuất hiện với dữ liệu null và status rõ ràng. |
+| `GET /api/markets/:symbol`           | Binance symbol được xác minh, ví dụ BTCUSDT; snapshot và freshness; không tìm thấy trả 404.                                                                                        |
+| `GET /api/markets/:symbol/candles`   | `timeframe=1h                                                                                                                                                                      | 4h  | 1d`, `from`, `to`UTC,`limit` 1–1000; mặc định 1h và 100 candle gần nhất, thứ tự tăng dần. Chặn khoảng truy vấn quá lớn. Tổng hợp thiếu candle trả lỗi dữ liệu thiếu có cấu trúc. |
+| `GET /api/health`                    | Kiểm tra ứng dụng và DB; DB không sẵn sàng trả 503.                                                                                                                                |
+| `GET /api/system/market-data-status` | Last success/attempt, freshness, trạng thái backfill, gap count, lỗi đã lọc và tình trạng collector.                                                                               |
 
 `meta` thể hiện thời điểm tạo response, thời điểm lấy dữ liệu, trạng thái stale/missing và pagination khi áp dụng. Giá thiếu là null; không dùng 0. Input sai trả 400; tài nguyên thiếu trả 404; phụ thuộc không sẵn sàng trả 503. Chỉ public read API; quản lý sync chạy qua backend/Mix, không mở endpoint mutation không bảo vệ.
 

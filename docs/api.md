@@ -1,4 +1,4 @@
-# REST contracts — Phase 1
+# REST contracts - Phase 1
 
 Prefix hiện tại `/api`; thay đổi breaking sau này dùng `/api/v2`. Tất cả endpoint chỉ đọc. Không có endpoint quản lý sync hoặc đặt lệnh.
 
@@ -43,21 +43,20 @@ Freshness gồm `status: fresh|stale|missing`, `age_seconds`, `timestamp` khi c�
 
 ## Errors
 
-| HTTP | Code | Ý nghĩa |
-| --- | --- | --- |
-| 400 | invalid_pagination | page/page_size không hợp lệ. |
-| 400 | invalid_symbol | Symbol sai định dạng. |
-| 400 | invalid_candle_query | timeframe/limit không hợp lệ. |
-| 400 | invalid_time_range | Khoảng không hợp lệ, quá rộng, không thẳng UTC hoặc chưa đóng. |
-| 404 | not_found | Symbol chưa được phát hiện. |
-| 422 | incomplete_aggregation | Thiếu candle nguồn. |
-| 503 | database_unavailable | Health check DB thất bại. |
-| 404/500 | http_404/http_500 | Lỗi framework được trả bằng cùng error envelope. |
+| HTTP    | Code                   | Ý nghĩa                                                        |
+| ------- | ---------------------- | -------------------------------------------------------------- |
+| 400     | invalid_pagination     | page/page_size không hợp lệ.                                   |
+| 400     | invalid_symbol         | Symbol sai định dạng.                                          |
+| 400     | invalid_candle_query   | timeframe/limit không hợp lệ.                                  |
+| 400     | invalid_time_range     | Khoảng không hợp lệ, quá rộng, không thẳng UTC hoặc chưa đóng. |
+| 404     | not_found              | Symbol chưa được phát hiện.                                    |
+| 422     | incomplete_aggregation | Thiếu candle nguồn.                                            |
+| 503     | database_unavailable   | Health check DB thất bại.                                      |
+| 404/500 | http_404/http_500      | Lỗi framework được trả bằng cùng error envelope.               |
 
 ## Research schedule metadata
 
 Market objects returned by `/api/markets` and `/api/markets/:symbol` include `analysis_interval_seconds` (positive integer). `/api/markets/:symbol/analysis` includes `data.interval_seconds`. Development uses 120 seconds; clients must display the API value instead of hardcoding a frequency. Historical `analysis.reason` describes the stored attempt and does not independently diagnose current runtime credentials.
-
 
 ## Nguồn USD/vàng (2026-10-18)
 

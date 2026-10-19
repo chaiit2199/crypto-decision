@@ -3,7 +3,8 @@ defmodule CryptoDecisionLab.MarketData.Universe do
   import Ecto.Query
   alias CryptoDecisionLab.{Repo, MarketData.Asset}
 
-  # Personal research universe. Spot USDT availability is verified via exchangeInfo, not assumed.
+  # Personal research universe. Only assets with Binance Spot USDT at selection time;
+  # exchangeInfo still verifies live trading status and never invents missing pairs.
   @groups [
     {"core",
      [
@@ -20,23 +21,22 @@ defmodule CryptoDecisionLab.MarketData.Universe do
        {"ONDO", "Ondo"},
        {"PYTH", "Pyth Network"},
        {"EIGEN", "EigenLayer"},
-       {"ASI", "Artificial Superintelligence Alliance"}
+       {"FET", "Fetch.ai"},
+       {"NEAR", "NEAR Protocol"}
      ]},
     {"mid_cap",
      [
        {"TAO", "Bittensor"},
        {"IMX", "Immutable"},
-       {"BEAM", "Beam"},
-       {"AKT", "Akash Network"},
-       {"HNT", "Helium"}
+       {"INJ", "Injective"},
+       {"SEI", "Sei"}
      ]},
     {"extended",
      [
        {"IO", "io.net"},
-       {"MKR", "Maker"},
-       {"CFG", "Centrifuge"},
-       {"HONEY", "Hivemapper"},
-       {"BONK", "Bonk"}
+       {"BONK", "Bonk"},
+       {"WIF", "dogwifhat"},
+       {"WLD", "Worldcoin"}
      ]}
   ]
 

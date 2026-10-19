@@ -1,4 +1,4 @@
-# Phase 1 — Báo cáo kiểm chứng
+# Phase 1 - Báo cáo kiểm chứng
 
 Ngày kiểm tra: 2026-10-17. Đây là kết quả đã chạy, không phải checklist dự kiến.
 
@@ -19,17 +19,17 @@ Tests bao phủ Decimal/finite values, cấu trúc JSON/OHLCV, candle chưa đó
 
 Public Binance adapter hoạt động qua Req; không cần API key.
 
-| Kiểm tra | Kết quả thực tế |
-| --- | --- |
-| exchangeInfo | 28 symbol Spot/USDT đang giao dịch thuộc danh mục 32 asset. |
-| latest prices | Đồng bộ 28 snapshot. |
-| rolling 24h stats | Đồng bộ 28 snapshot qua batch tối đa 20 symbol. |
-| backfill BTCUSDT | Batch đầu 1.000 candle trả `:more`, resume hoàn tất với tổng 1.005 candle 1H. |
-| incremental overlap | Sau chạy lặp vẫn đúng 1.005 row; không thêm duplicate. |
-| supervised poller | Ba lần đều đồng bộ 28 giá; hai khoảng cách thực tế là 30.001 ms và 30.000 ms. |
-| DB health | SELECT 1 thành công. |
-| Năm endpoint qua Phoenix | HTTP 200 và JSON hợp lệ. |
-| HTTP server thực localhost:4017 | health, markets và candles trả 200/JSON qua TCP. |
+| Kiểm tra                        | Kết quả thực tế                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| exchangeInfo                    | 28 symbol Spot/USDT đang giao dịch thuộc danh mục 32 asset.                   |
+| latest prices                   | Đồng bộ 28 snapshot.                                                          |
+| rolling 24h stats               | Đồng bộ 28 snapshot qua batch tối đa 20 symbol.                               |
+| backfill BTCUSDT                | Batch đầu 1.000 candle trả `:more`, resume hoàn tất với tổng 1.005 candle 1H. |
+| incremental overlap             | Sau chạy lặp vẫn đúng 1.005 row; không thêm duplicate.                        |
+| supervised poller               | Ba lần đều đồng bộ 28 giá; hai khoảng cách thực tế là 30.001 ms và 30.000 ms. |
+| DB health                       | SELECT 1 thành công.                                                          |
+| Năm endpoint qua Phoenix        | HTTP 200 và JSON hợp lệ.                                                      |
+| HTTP server thực localhost:4017 | health, markets và candles trả 200/JSON qua TCP.                              |
 
 Tại thời điểm chạy, TON, KAS, HNT và MEW không có mapping Spot/USDT đang giao dịch trong response nhận được. Đây là kết quả tại thời điểm kiểm tra, không hardcode thành trạng thái cố định. Các asset này vẫn tồn tại trong danh mục; không thay bằng asset khác.
 
@@ -45,8 +45,7 @@ Tại thời điểm chạy, TON, KAS, HNT và MEW không có mapping Spot/USDT 
 
 Phần triển khai Phase 1 và kiểm tra trong môi trường hiện có đã thực hiện. Việc nghiệm thu môi trường Docker và tải lịch sử đầy đủ còn cần chạy trên môi trường vận hành đích.
 
-
-## Bảng giá dev và Oban — 2026-10-17
+## Bảng giá dev và Oban - 2026-10-17
 
 - Nguyên nhân kiểm chứng ở API đang chạy: `enabled=false`, 32 assets, 0 active symbols, collector null và không có job. Log `/api/markets/ETH` trả 404 vì contract yêu cầu mã cặp `ETHUSDT`.
 - Dev hiện bật sync mặc định; Oban queue được khai báo tại `config/dev.exs`, Cron dùng chung tại `config/config.exs`; runtime hỗ trợ tắt tường minh. Production mặc định tắt, test luôn tắt.
@@ -59,7 +58,7 @@ Phần triển khai Phase 1 và kiểm tra trong môi trường hiện có đã 
 - Chưa kiểm tra tương tác và bố cục bằng trình duyệt tự động vì phiên làm việc không có browser preview tool. Đã kiểm tra SSR/HTTP, type/lint/build; không coi các kiểm tra này thay thế browser QA.
 - `npm audit --omit=dev`: **0 vulnerabilities**. Audit toàn bộ cây có 9 cảnh báo (2 moderate, 7 high) trong công cụ build/lint, gồm Tailwind 3, glob/braces và selector parser; chưa áp dụng nâng major tự động vì thay đổi pipeline SCSS. Không có cảnh báo runtime trong lần kiểm tra này.
 
-## Chi tiết, hiệu ứng giá và chart — 2026-10-17
+## Chi tiết, hiệu ứng giá và chart - 2026-10-17
 
 - Thêm `PriceFlash`: CSS animation 800ms trong effect, render thuần; so sánh Decimal bằng BigInt, nháy xanh/đỏ theo tăng/giảm, không nháy với giá không đổi hoặc lần đầu, hỗ trợ reduced motion.
 - Bấm mã/dòng mở chi tiết và tự cuộn tới panel. Chart Lightweight Charts 5.2.1 vẽ nến đóng + volume, khung 1H/4H/1D; đường snapshot riêng. Request cũ bị hủy khi đổi mã/khung; loading, empty, unavailable và lỗi được hiển thị rõ.
@@ -69,7 +68,7 @@ Phần triển khai Phase 1 và kiểm tra trong môi trường hiện có đã 
 - Đã mở Chrome với dữ liệu thật và kiểm tra screenshot desktop 1440px: chart BTC, snapshot line và stats hiển thị; không có pageerror trong phiên kiểm tra. Đây là lần bổ sung browser QA, khắc phục giới hạn chưa có kiểm tra trình duyệt của mục trước.
 - Backend không thay đổi trong lần này; không chạy lại ExUnit. API 4001 và web 3000 tiếp tục chạy.
 
-## Giờ Việt Nam và đánh giá dữ liệu — 2026-10-17
+## Giờ Việt Nam và đánh giá dữ liệu - 2026-10-17
 
 - Chart dùng formatter Asia/Ho_Chi_Minh cho trục thời gian, crosshair và thời gian mở nến. Tick ngắn được dựng từ Intl parts để ổn định giữa Node/Chrome; timestamps gốc và ranh giới 4H/1D vẫn UTC.
 - `npm run typecheck`, `npm run lint`, `npm run build`: thành công. `npm run test:e2e`: **5 passed**; gồm chuyển ngày/năm, không thay đổi timestamp, browser context America/New_York vẫn hiển thị UTC+7 và các regression về flash/chọn mã/chart.
@@ -77,8 +76,7 @@ Phần triển khai Phase 1 và kiểm tra trong môi trường hiện có đã 
 - Audit SELECT chỉ đọc: 688.001 nến 1H / 28 cặp, 0 giờ thiếu nội bộ giữa nến đầu-cuối, 0 nến chưa đóng, 0 vi phạm OHLC/base_volume đã kiểm tra. Phạm vi và giới hạn, độ phủ từng cặp và đề xuất chỉ báo/Jev nằm trong [decision-readiness.md](decision-readiness.md).
 - Đã xác minh contract Jev bằng OpenAPI công khai; chưa gọi model có xác thực, chưa triển khai inference hoặc engine chỉ báo/quyết định trong lần này. Backend không sửa, không chạy lại ExUnit.
 
-
-## Jev mỗi 5 phút — 2026-10-17
+## Jev mỗi 5 phút - 2026-10-17
 
 - Migration `20261017155028_create_market_analyses` chạy thành công trên DB dev và DB test riêng (PostgreSQL local port 55433). Không reset/truncate DB dev.
 - `mix precommit`, `mix format --check-formatted`, `mix compile --warnings-as-errors`: thành công; **59 ExUnit tests passed**. Test Jev hoàn toàn offline với `MockDecisionProvider`/injected HTTP request, không dùng key thật trong test.

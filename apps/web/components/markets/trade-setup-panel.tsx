@@ -14,18 +14,26 @@ type TradeSetupPanelProps = {
     expired: boolean;
 };
 
-export function TradeSetupPanel({ report, quoteAsset, expired }: TradeSetupPanelProps) {
+export function TradeSetupPanel({
+    report,
+    quoteAsset,
+    expired,
+}: TradeSetupPanelProps) {
     const plan = !expired ? report.plan : null;
     const showLevels = plan && report.trade_eligibility !== "NO_DATA";
     const missing = report.missing_requirements ?? [];
 
     return (
-        <section className="trade-setup-panel" aria-label="Phiếu lệnh nghiên cứu">
+        <section
+            className="trade-setup-panel"
+            aria-label="Phiếu lệnh nghiên cứu"
+        >
             <header className="trade-setup-panel__header">
                 <div>
                     <h3>Phiếu lệnh Spot</h3>
                     <p>
-                        {report.exchange.toUpperCase()} · {report.symbol} · {report.quote_asset}
+                        {report.exchange.toUpperCase()} · {report.symbol} ·{" "}
+                        {report.quote_asset}
                         {" · "}Chỉ mua Spot · Không đặt lệnh
                     </p>
                 </div>
@@ -68,8 +76,10 @@ export function TradeSetupPanel({ report, quoteAsset, expired }: TradeSetupPanel
                     <dd>
                         Quy tắc nến:{" "}
                         {report.horizon_deterministic
-                            ? HOLDING_HORIZON_LABELS[report.horizon_deterministic]
-                            : "—"}
+                            ? HOLDING_HORIZON_LABELS[
+                                  report.horizon_deterministic
+                              ]
+                            : "-"}
                     </dd>
                     <dd>Phân loại bối cảnh · không dự báo lãi dài/ngắn hạn.</dd>
                 </div>
@@ -93,7 +103,8 @@ export function TradeSetupPanel({ report, quoteAsset, expired }: TradeSetupPanel
 
             {report.trade_eligibility === "RESEARCH_CANDIDATE" && !expired && (
                 <p className="trade-setup-panel__research" role="status">
-                    Research candidate — Unvalidated. Chưa có xác suất có lãi đã hiệu chuẩn.
+                    Research candidate - Unvalidated. Chưa có xác suất có lãi đã
+                    hiệu chuẩn.
                 </p>
             )}
 
@@ -114,11 +125,15 @@ export function TradeSetupPanel({ report, quoteAsset, expired }: TradeSetupPanel
                     <div>
                         <dt>TP1 / TP2 / TP3</dt>
                         <dd>
-                            {formatIndicator(plan.take_profit_1 ?? plan.take_profit)}
+                            {formatIndicator(
+                                plan.take_profit_1 ?? plan.take_profit,
+                            )}
                             {" / "}
-                            {formatIndicator(plan.take_profit_2 ?? plan.take_profit)}
+                            {formatIndicator(
+                                plan.take_profit_2 ?? plan.take_profit,
+                            )}
                             {" / "}
-                            {formatIndicator(plan.take_profit_3 ?? "—")}
+                            {formatIndicator(plan.take_profit_3 ?? "-")}
                         </dd>
                     </div>
                     <div>
@@ -131,13 +146,15 @@ export function TradeSetupPanel({ report, quoteAsset, expired }: TradeSetupPanel
                     </div>
                     <div>
                         <dt>Rủi ro ngân sách</dt>
-                        <dd>{formatIndicator(plan.risk_budget)} {quoteAsset}</dd>
+                        <dd>
+                            {formatIndicator(plan.risk_budget)} {quoteAsset}
+                        </dd>
                     </div>
                 </dl>
             ) : (
                 <p>
-                    Chưa hiện mức vào / SL / TP cho đến khi có đủ dữ liệu cùng sàn.
-                    Không tạo mức giá giả.
+                    Chưa hiện mức vào / SL / TP cho đến khi có đủ dữ liệu cùng
+                    sàn. Không tạo mức giá giả.
                 </p>
             )}
         </section>

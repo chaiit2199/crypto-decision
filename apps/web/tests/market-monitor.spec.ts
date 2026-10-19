@@ -129,7 +129,7 @@ test("USD selection never relabels USDT data when the USD market is unavailable"
     await expect(
         page.getByRole("columnheader", { name: "Giá / USD", exact: true }),
     ).toBeVisible();
-    await expect(details.locator(".price-flash")).toHaveText("—");
+    await expect(details.locator(".price-flash")).toHaveText("-");
     await expect(details).toContainText("Chưa có cặp USD khả dụng");
     await expect(details).toContainText(
         "Không có cặp giao dịch khả dụng để phân tích",
@@ -182,7 +182,7 @@ test("quote selection switches to the matching market snapshot and candle reques
     await page
         .getByRole("button", { name: "Xem chi tiết ETH", exact: true })
         .click();
-    await expect(details.locator(".price-flash")).toHaveText("—");
+    await expect(details.locator(".price-flash")).toHaveText("-");
 });
 
 test("USD is the default and XAU shows reference price without fabricated history or Jev predictions", async ({
@@ -543,8 +543,9 @@ test("empty/error candle responses are visible and a delayed old selection canno
     await expect(page.locator(".market-chart__canvas")).toHaveCount(0);
 });
 
-
-test("polling follows backend cadence and manual refresh also reloads candles", async ({ page }) => {
+test("polling follows backend cadence and manual refresh also reloads candles", async ({
+    page,
+}) => {
     const monitor = fixtureMonitor();
     monitor.data.status.price_poll_interval_seconds = 30;
     let monitorRequests = 0;
@@ -568,7 +569,9 @@ test("polling follows backend cadence and manual refresh also reloads candles", 
     await page.clock.runFor(10_000);
     await expect.poll(() => monitorRequests).toBe(initialRequests + 1);
     await expect.poll(() => candleRequests).toBeGreaterThan(1);
-    await expect(page.locator(".market-monitor__live")).not.toContainText("mỗi");
+    await expect(page.locator(".market-monitor__live")).not.toContainText(
+        "mỗi",
+    );
 
     const previousCandles = candleRequests;
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
@@ -577,7 +580,9 @@ test("polling follows backend cadence and manual refresh also reloads candles", 
     await expect.poll(() => monitorRequests).toBe(initialRequests + 2);
 });
 
-test("freshness expires without fetching and an API error preserves the last snapshot", async ({ page }) => {
+test("freshness expires without fetching and an API error preserves the last snapshot", async ({
+    page,
+}) => {
     const monitor = fixtureMonitor();
     monitor.data.assets[0].markets[0].price_max_age_seconds = 2;
     let fail = false;
@@ -586,14 +591,25 @@ test("freshness expires without fetching and an API error preserves the last sna
     await page.route("**/api/market-monitor", (route) => {
         requests += 1;
         return route.fulfill({
-            json: fail ? { ok: false, checked_at: Date.now(), message: "Fixture: API unavailable" } : monitor,
+            json: fail
+                ? {
+                      ok: false,
+                      checked_at: Date.now(),
+                      message: "Fixture: API unavailable",
+                  }
+                : monitor,
         });
     });
-    await page.route("**/api/market-candles?**", (route) => route.fulfill({ json: fixtureCandles() }));
+    await page.route("**/api/market-candles?**", (route) =>
+        route.fulfill({ json: fixtureCandles() }),
+    );
     await page.goto("/");
     await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
     const row = page.locator(".market-row").filter({
-        has: page.getByRole("button", { name: "Xem chi tiết BTC", exact: true }),
+        has: page.getByRole("button", {
+            name: "Xem chi tiết BTC",
+            exact: true,
+        }),
     });
     await expect(row.locator(".price-flash")).toHaveText("100");
     const initialRequests = requests;
@@ -604,6 +620,8 @@ test("freshness expires without fetching and an API error preserves the last sna
     fail = true;
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
     await page.clock.runFor(1);
-    await expect(page.getByRole("alert")).toContainText("Fixture: API unavailable");
+    await expect(page.getByRole("alert")).toContainText(
+        "Fixture: API unavailable",
+    );
     await expect(row.locator(".price-flash")).toHaveText("100");
 });

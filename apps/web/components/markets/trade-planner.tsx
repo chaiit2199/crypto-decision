@@ -3,7 +3,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import type { PlanInput, TradePlan, TradingResult } from "@/lib/api/trading-types";
+import type {
+    PlanInput,
+    TradePlan,
+    TradingResult,
+} from "@/lib/api/trading-types";
 import { formatIndicator } from "@/lib/format/market";
 
 type TradePlannerProps = {
@@ -22,10 +26,18 @@ type PlannerFieldProps = {
     onChange: (name: keyof PlanInput, value: string) => void;
 };
 
-function PlannerField({ name, label, unit, value, onChange }: PlannerFieldProps) {
+function PlannerField({
+    name,
+    label,
+    unit,
+    value,
+    onChange,
+}: PlannerFieldProps) {
     return (
         <label className="trade-planner__field">
-            <span>{label} <small>{unit}</small></span>
+            <span>
+                {label} <small>{unit}</small>
+            </span>
             <input
                 name={name}
                 inputMode="decimal"
@@ -39,22 +51,34 @@ function PlannerField({ name, label, unit, value, onChange }: PlannerFieldProps)
     );
 }
 
-export function PlanSummary({ plan, quoteAsset }: { plan: TradePlan; quoteAsset: string }) {
+export function PlanSummary({
+    plan,
+    quoteAsset,
+}: {
+    plan: TradePlan;
+    quoteAsset: string;
+}) {
     return (
         <div className="trade-planner__result" role="status">
             <h4>Kết quả mô phỏng</h4>
             <dl className="trading-workbench__metrics">
                 <div>
                     <dt>Giá trị mua · {quoteAsset}</dt>
-                    <dd title={plan.notional}>{formatIndicator(plan.notional)}</dd>
+                    <dd title={plan.notional}>
+                        {formatIndicator(plan.notional)}
+                    </dd>
                 </div>
                 <div>
                     <dt>Lỗ tại dừng lỗ · {quoteAsset}</dt>
-                    <dd title={plan.net_loss}>{formatIndicator(plan.net_loss)}</dd>
+                    <dd title={plan.net_loss}>
+                        {formatIndicator(plan.net_loss)}
+                    </dd>
                 </div>
                 <div>
                     <dt>Lãi tại chốt lời · {quoteAsset}</dt>
-                    <dd title={plan.net_profit}>{formatIndicator(plan.net_profit)}</dd>
+                    <dd title={plan.net_profit}>
+                        {formatIndicator(plan.net_profit)}
+                    </dd>
                 </div>
                 <div>
                     <dt>Tỷ lệ lỗ : lãi</dt>
@@ -67,7 +91,9 @@ export function PlanSummary({ plan, quoteAsset }: { plan: TradePlan; quoteAsset:
                 <dl className="trading-workbench__metrics">
                     <div>
                         <dt>Số lượng tài sản mua</dt>
-                        <dd title={plan.quantity}>{formatIndicator(plan.quantity)}</dd>
+                        <dd title={plan.quantity}>
+                            {formatIndicator(plan.quantity)}
+                        </dd>
                     </div>
                     <div>
                         <dt>Ngân sách rủi ro · {quoteAsset}</dt>
@@ -76,16 +102,28 @@ export function PlanSummary({ plan, quoteAsset }: { plan: TradePlan; quoteAsset:
                     <div>
                         <dt>Tổng chi phí giả định · {quoteAsset}</dt>
                         <dd>{formatIndicator(plan.estimated_cost)}</dd>
-                        <dd>{formatIndicator(plan.estimated_total_cost_pct)}% giá trị mua ban đầu.</dd>
+                        <dd>
+                            {formatIndicator(plan.estimated_total_cost_pct)}%
+                            giá trị mua ban đầu.
+                        </dd>
                     </div>
                 </dl>
-                <p>Phí và trượt giá hai chiều tính trên giá trị mua ban đầu, theo mô hình vốn cố định.</p>
+                <p>
+                    Phí và trượt giá hai chiều tính trên giá trị mua ban đầu,
+                    theo mô hình vốn cố định.
+                </p>
             </details>
         </div>
     );
 }
 
-export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, suggestedPlan }: TradePlannerProps) {
+export function TradePlanner({
+    symbol,
+    exchange,
+    quoteAsset,
+    currentPrice,
+    suggestedPlan,
+}: TradePlannerProps) {
     const [input, setInput] = useState<PlanInput>({
         equity: "1000",
         risk_percent: "0.5",
@@ -130,9 +168,12 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
                 body: JSON.stringify({ ...input, symbol, exchange }),
                 signal: AbortSignal.timeout(10_000),
             });
-            setResult(await response.json() as TradingResult<TradePlan>);
+            setResult((await response.json()) as TradingResult<TradePlan>);
         } catch {
-            setResult({ ok: false, message: "Không tính được mô phỏng. Vui lòng thử lại." });
+            setResult({
+                ok: false,
+                message: "Không tính được mô phỏng. Vui lòng thử lại.",
+            });
         } finally {
             setIsCalculating(false);
         }
@@ -143,9 +184,14 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
             <header className="trading-workbench__header">
                 <div>
                     <h3>Tính vốn cho lệnh mua</h3>
-                    <p>Nhập mức giá dự kiến để xem số vốn mua, khoản lỗ và lãi sau phí.</p>
+                    <p>
+                        Nhập mức giá dự kiến để xem số vốn mua, khoản lỗ và lãi
+                        sau phí.
+                    </p>
                 </div>
-                <span className="trade-planner__identity">{symbol} · {exchange.toUpperCase()}</span>
+                <span className="trade-planner__identity">
+                    {symbol} · {exchange.toUpperCase()}
+                </span>
             </header>
             <form onSubmit={handleSubmit}>
                 <fieldset disabled={isCalculating}>
@@ -168,7 +214,10 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
                                 onChange={handleChange}
                             />
                         </div>
-                        <p>Rủi ro là phần vốn chấp nhận mất nếu giá chạm dừng lỗ, đã gồm chi phí.</p>
+                        <p>
+                            Rủi ro là phần vốn chấp nhận mất nếu giá chạm dừng
+                            lỗ, đã gồm chi phí.
+                        </p>
                     </fieldset>
                     <fieldset className="trade-planner__group">
                         <legend>2. Giá dự kiến</legend>
@@ -195,10 +244,18 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
                                 onChange={handleChange}
                             />
                         </div>
-                        <p>Dừng lỗ thấp hơn giá vào; chốt lời cao hơn giá vào.</p>
+                        <p>
+                            Dừng lỗ thấp hơn giá vào; chốt lời cao hơn giá vào.
+                        </p>
                         {currentPrice && (
-                            <button type="button" onClick={() => handleChange("entry", currentPrice)}>
-                                Dùng giá hiện tại: {formatIndicator(currentPrice)} {quoteAsset}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    handleChange("entry", currentPrice)
+                                }
+                            >
+                                Dùng giá hiện tại:{" "}
+                                {formatIndicator(currentPrice)} {quoteAsset}
                             </button>
                         )}
                     </fieldset>
@@ -209,9 +266,13 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
                         }}
                     >
                         <summary>
-                            Phí & trượt giá · {input.fee_percent || "—"}% + {input.slippage_percent || "—"}% mỗi chiều
+                            Phí & trượt giá · {input.fee_percent || "-"}% +{" "}
+                            {input.slippage_percent || "-"}% mỗi chiều
                         </summary>
-                        <p>Giá trị mặc định chỉ là giả định. Điều chỉnh theo biểu phí tài khoản và thanh khoản.</p>
+                        <p>
+                            Giá trị mặc định chỉ là giả định. Điều chỉnh theo
+                            biểu phí tài khoản và thanh khoản.
+                        </p>
                         <div className="trade-planner__capital">
                             <PlannerField
                                 name="fee_percent"
@@ -234,14 +295,25 @@ export function TradePlanner({ symbol, exchange, quoteAsset, currentPrice, sugge
                             {isCalculating ? "Đang tính…" : "Tính mô phỏng"}
                         </button>
                         {suggestedPlan && (
-                            <button type="button" onClick={handleUseScenario}>Điền kịch bản ATR tham khảo</button>
+                            <button type="button" onClick={handleUseScenario}>
+                                Điền kịch bản ATR tham khảo
+                            </button>
                         )}
                     </div>
                 </fieldset>
             </form>
-            {result && !result.ok && <p className="trading-workbench__status" role="alert">{result.message}</p>}
-            {result?.ok && <PlanSummary plan={result.data} quoteAsset={quoteAsset} />}
-            <p>Chỉ mô phỏng mua Spot, không đặt lệnh. Lỗ thực tế có thể lớn hơn khi giá nhảy hoặc thiếu thanh khoản.</p>
+            {result && !result.ok && (
+                <p className="trading-workbench__status" role="alert">
+                    {result.message}
+                </p>
+            )}
+            {result?.ok && (
+                <PlanSummary plan={result.data} quoteAsset={quoteAsset} />
+            )}
+            <p>
+                Chỉ mô phỏng mua Spot, không đặt lệnh. Lỗ thực tế có thể lớn hơn
+                khi giá nhảy hoặc thiếu thanh khoản.
+            </p>
         </section>
     );
 }

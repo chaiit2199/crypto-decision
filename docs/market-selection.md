@@ -22,7 +22,9 @@ MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix run priv/repo/seeds.exs
 
 ## Bỏ hoặc bật lại mã đã seed
 
-Xóa tuple khỏi `@groups` rồi chạy seed sẽ tắt asset đó. Muốn tắt tạm một mã vẫn còn trong danh mục:
+Xóa tuple khỏi `@groups` rồi chạy seed sẽ tắt asset đó; lịch sử nến/phân tích vẫn được giữ. Muốn **xóa hẳn** asset ngoài danh mục hiện tại (20 mã gồm BTC, đã lọc bỏ mã không có Spot USDT/`BREAK`) và dữ liệu liên quan để giảm dung lượng DB, chạy migration `20261019080000_prune_market_universe` rồi `VACUUM (ANALYZE)` trên PostgreSQL. Migration này không hoàn tác được. XAU đăng ký lại từ Gold API sau lần sync nguồn tiếp theo nếu cần.
+
+Muốn tắt tạm một mã vẫn còn trong danh mục:
 
 ```sh
 MARKET_SYNC_ENABLED=false JEV_ENABLED=false iex -S mix
@@ -44,7 +46,7 @@ Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset �
 
 Kiểm tra trên chính VPS: `date -u` và `curl -sS --max-time 15 -D - -o /dev/null https://api.exchange.coinbase.com/products`. Đối chiếu HTTP status, Date, Content-Type và UTC của hệ điều hành. Thiếu cặp USD không có nghĩa mọi asset không được Coinbase hỗ trợ: metadata có thể chưa lưu được. Sau khi sửa nguyên nhân và deploy, collector tự thử lại theo lịch sau cooldown; không cần xóa database hoặc lịch sử job lỗi.
 
-### Sửa sai lệch timestamp 41 giây — 2026-10-19
+### Sửa sai lệch timestamp 41 giây - 2026-10-19
 
 Lỗi `{:future_response, 41}` chặn metadata Coinbase trước khi đăng ký cặp USD. Binance trước đây cho phép HTTP Date lệch 60 giây nhưng từ chối `closeTime` của thống kê khi đi trước máy quá 5 giây; Jev lại từ chối mọi snapshot có tuổi âm. Thống nhất dung sai snapshot ở 60 giây giải quyết chuỗi kiểm tra mâu thuẫn này. Đây là dung sai vận hành của ứng dụng, không phải cam kết độ chính xác đồng hồ của sàn. Máy chạy backend vẫn cần đồng bộ NTP.
 
