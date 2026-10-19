@@ -94,8 +94,8 @@ defmodule CryptoDecisionLab.Trading do
 
             true ->
               Decimal.compare(
-                a["plan"]["risk_reward_ratio"] || "-1",
-                b["plan"]["risk_reward_ratio"] || "-1"
+                get_in(a, ["plan", "risk_reward_ratio"]) || "-1",
+                get_in(b, ["plan", "risk_reward_ratio"]) || "-1"
               ) != :lt
           end
         end)

@@ -93,6 +93,9 @@ test("workbench explains missing data and sends the selected market's hypothetic
         await route.fulfill({ status: 400, json: { ok: false, message: "Synthetic: dừng lỗ phải thấp hơn giá vào" } });
     });
     await page.goto("/");
+    await page.getByRole("button", { name: "Tìm trong danh mục theo dõi", exact: true }).click();
+    await expect(page.getByRole("listbox", { name: "Danh mục theo dõi" })).toBeVisible();
+    await page.getByRole("option", { name: /BTC/ }).click();
     const workbench = page.getByRole("region", { name: "Nghiên cứu cơ hội giao dịch", exact: true });
     await expect(workbench).toContainText("Chưa đồng bộ sổ lệnh");
     await expect(workbench).toContainText("Chưa đủ dữ liệu");

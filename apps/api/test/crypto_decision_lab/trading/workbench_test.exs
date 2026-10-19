@@ -305,6 +305,12 @@ defmodule CryptoDecisionLab.Trading.WorkbenchTest do
     assert "LIQUIDITY_MISSING" in report["risk_flags"]
     assert {:error, :invalid_style} = Trading.workbench(symbol.symbol, %{"style" => "unknown"})
     assert {:ok, [_], _} = Trading.opportunities(%{})
+
+    # Multiple symbols with nil plans must sort without raising.
+    _other = MarketFixtures.symbol("ARB")
+    assert {:ok, rows, _} = Trading.opportunities(%{})
+    assert length(rows) >= 2
+    assert Enum.all?(rows, &(&1["plan"] == nil))
   end
 
   test "intraday keeps hourly reference indicators without Jev or Coinbase short candles" do

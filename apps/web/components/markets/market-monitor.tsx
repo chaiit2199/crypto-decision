@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,6 +13,7 @@ import type { QuoteAsset } from "@/lib/markets/selected-market";
 import { OpportunityScanner } from "./opportunity-scanner";
 import { MarketRow } from "./market-row";
 import { MarketDetails } from "./market-details";
+import { WatchlistPicker } from "./watchlist-picker";
 
 type MarketMonitorProps = {
     initialResult: MarketMonitorResult;
@@ -160,9 +162,14 @@ export function MarketMonitor({
                     href="/"
                     aria-label="Crypto Decision, trang chủ"
                 >
-                    <span className="market-monitor__logo" aria-hidden="true">
-                        C<span>↗</span>
-                    </span>
+                    <Image
+                        className="market-monitor__logo"
+                        src="/logo.png"
+                        alt=""
+                        width={40}
+                        height={40}
+                        priority
+                    />
                     <span>
                         CRYPTO
                         <span className="market-monitor__brand-sub">
@@ -170,9 +177,13 @@ export function MarketMonitor({
                         </span>
                     </span>
                 </Link>
-                <a className="market-monitor__nav" href="#watchlist-title">
-                    Danh mục <span aria-hidden="true">↗</span>
-                </a>
+                <WatchlistPicker
+                    assets={assets}
+                    quoteAsset={quoteAsset}
+                    selectedSymbol={selectedSymbol}
+                    now={now}
+                    onSelect={handleSelectSymbol}
+                />
             </header>
 
             <section
@@ -429,7 +440,15 @@ export function MarketMonitor({
                 </footer>
             </section>
             <footer className="market-monitor__footer">
-                <span>CRYPTO DECISION</span>
+                <span className="market-monitor__footer-brand">
+                    <Image
+                        src="/logo.png"
+                        alt=""
+                        width={24}
+                        height={24}
+                    />
+                    CRYPTO DECISION
+                </span>
                 <span>
                     Nguồn: Coinbase (USD) · Binance (USDT) · giá vàng tham chiếu
                     (XAU/USD)
