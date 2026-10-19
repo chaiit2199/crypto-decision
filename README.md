@@ -66,3 +66,15 @@ Nếu cặp USD vừa đăng ký lại thành UNAVAILABLE hoặc vẫn thấy l�
 
 Xem [hướng dẫn deploy](docs/deploy-api.md). Jenkins script path: `apps/api/Jenkinsfile`;
 Docker build context: `apps/api`. Cấu hình mẫu VPS: `apps/api/env.sh.example`.
+
+### Trading workbench (Spot research)
+
+The monitor includes Scalping/Intraday/Swing research views, Binance 5m/15m charts,
+spread/depth, a cost-aware hypothetical trade planner and an opportunity scanner.
+Apply the new migration before running this version; short history and depth sync
+run with `MARKET_SYNC_ENABLED=true`. Existing polling preferences are retained.
+Missing/stale data or unvalidated strategies keep the report blocked.
+
+See [Trading workbench](docs/trading-workbench.md) for contracts, research assumptions,
+manual replay/paper commands, operational limits and the current verification gaps.
+Paper/replay reports are simulations and never place real orders.

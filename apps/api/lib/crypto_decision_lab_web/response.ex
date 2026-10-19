@@ -21,6 +21,9 @@ defmodule CryptoDecisionLabWeb.Response do
     |> json(%{error: %{code: to_string(reason), message: message(reason)}})
   end
 
+  defp message(:invalid_plan),
+    do: "Use decimal strings, positive equity, risk up to 5%, and stop < entry < target"
+
   defp message(:not_found), do: "Market symbol not found"
   defp message(:database_unavailable), do: "Database unavailable"
   defp message(:incomplete_aggregation), do: "Underlying hourly candles are missing"

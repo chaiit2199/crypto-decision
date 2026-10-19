@@ -139,7 +139,7 @@ export type MarketMonitorData = {
 export type MarketMonitorResult =
     { ok: true; data: MarketMonitorData; checked_at: number } | { ok: false; message: string; checked_at: number };
 
-export const timeframeSchema = z.enum(["1h", "4h", "1d"]);
+export const timeframeSchema = z.enum(["5m", "15m", "1h", "4h", "1d"]);
 // Canvas rendering needs finite numbers. Keep the original strings in the contract.
 const chartDecimal = decimal.refine((value) => Number.isFinite(Number(value)));
 const candleSchema = z.object({

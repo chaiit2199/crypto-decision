@@ -18,6 +18,7 @@ defmodule CryptoDecisionLab.MarketData.Sync do
   }
 
   @hour 3_600_000
+  @widths %{"5m" => 300_000, "15m" => 900_000, "1h" => @hour}
 
   def active_symbols do
     Repo.all(
@@ -238,32 +239,55 @@ defmodule CryptoDecisionLab.MarketData.Sync do
            true <-
              symbol.enabled and symbol.trading_status == "TRADING" and
                Repo.get!(Asset, symbol.asset_id).enabled do
-        state = state(symbol.id, Atom.to_string(mode))
+        timeframe = Keyword.get(options, :timeframe, "1h")
+        width = Map.fetch!(@widths, timeframe)
+        state = state(symbol.id, Atom.to_string(mode), timeframe)
         now = Collector.now()
-        start_ms = start_ms(symbol, state, mode, options, now)
+        start_ms = start_ms(symbol, state, mode, options, now, timeframe, width)
         end_ms = Keyword.get(options, :to, DateTime.to_unix(now, :millisecond) - 5001)
-        mark_state(symbol.id, mode, %{status: "running", last_attempt_at: now})
+        mark_state(symbol.id, mode, %{status: "running", last_attempt_at: now}, timeframe)
 
         cond do
           start_ms > end_ms ->
-            mark_state(symbol.id, mode, %{
-              status: "complete",
-              last_success_at: now,
-              last_error: nil
-            })
+            mark_state(
+              symbol.id,
+              mode,
+              %{
+                status: "complete",
+                last_success_at: now,
+                last_error: nil
+              },
+              timeframe
+            )
 
             {:ok, :complete}
 
           true ->
-            case Binance.klines(symbol.symbol, start_ms, end_ms) do
+            case Binance.klines(symbol.symbol, start_ms, end_ms, timeframe: timeframe) do
               {:ok, response} ->
                 cutoff =
                   Enum.min_by([now, response.server_time], &DateTime.to_unix(&1, :microsecond))
 
-                persist_batch(symbol, state, mode, response.body, cutoff, start_ms, end_ms)
+                persist_batch(
+                  symbol,
+                  state,
+                  mode,
+                  response.body,
+                  cutoff,
+                  start_ms,
+                  end_ms,
+                  timeframe,
+                  width
+                )
 
               {:error, reason} ->
-                mark_state(symbol.id, mode, %{status: "error", last_error: safe_reason(reason)})
+                mark_state(
+                  symbol.id,
+                  mode,
+                  %{status: "error", last_error: safe_reason(reason)},
+                  timeframe
+                )
+
                 failure(reason)
             end
         end
@@ -273,31 +297,40 @@ defmodule CryptoDecisionLab.MarketData.Sync do
     end)
   end
 
-  defp start_ms(_symbol, state, :backfill, opts, now) do
-    initial = Keyword.get(opts, :from, DateTime.to_unix(now, :millisecond) - 3 * 365 * 24 * @hour)
+  defp start_ms(_symbol, state, :backfill, opts, now, timeframe, width) do
+    days = %{"5m" => 30, "15m" => 90, "1h" => 3 * 365}[timeframe]
+    initial = Keyword.get(opts, :from, DateTime.to_unix(now, :millisecond) - days * 86_400_000)
 
     if state && state.last_synced_open_time,
-      do: DateTime.to_unix(state.last_synced_open_time, :millisecond) + @hour,
-      else: div(initial + @hour - 1, @hour) * @hour
+      do: DateTime.to_unix(state.last_synced_open_time, :millisecond) + width,
+      else: div(initial + width - 1, width) * width
   end
 
-  defp start_ms(_symbol, _state, :repair, opts, _now), do: Keyword.fetch!(opts, :from)
+  defp start_ms(_symbol, _state, :repair, opts, _now, _timeframe, _width),
+    do: Keyword.fetch!(opts, :from)
 
-  defp start_ms(symbol, _state, :incremental, _opts, now) do
+  defp start_ms(symbol, state, :incremental, _opts, now, timeframe, width) do
     latest =
-      Repo.one(
-        from c in Candle, where: c.market_symbol_id == ^symbol.id, select: max(c.open_time)
-      )
+      if state && state.last_synced_open_time do
+        state.last_synced_open_time
+      else
+        Repo.one(
+          from c in Candle,
+            where: c.market_symbol_id == ^symbol.id and c.timeframe == ^timeframe,
+            select: max(c.open_time)
+        )
+      end
 
     if latest,
       do: DateTime.to_unix(latest, :millisecond),
-      else: div(DateTime.to_unix(now, :millisecond), @hour) * @hour - 2 * @hour
+      else: div(DateTime.to_unix(now, :millisecond), width) * width - 300 * width
   end
 
-  defp persist_batch(symbol, previous, mode, raw, cutoff, start_ms, end_ms) when is_list(raw) do
+  defp persist_batch(symbol, previous, mode, raw, cutoff, start_ms, end_ms, timeframe, width)
+       when is_list(raw) do
     result =
       Enum.reduce_while(raw, {:ok, []}, fn row, {:ok, values} ->
-        case Parser.candle(row, cutoff) do
+        case Parser.candle(row, cutoff, timeframe) do
           {:ok, value} ->
             time = DateTime.to_unix(value.open_time, :millisecond)
 
@@ -318,8 +351,11 @@ defmodule CryptoDecisionLab.MarketData.Sync do
         values = Enum.reverse(values)
         times = Enum.map(values, &DateTime.to_unix(&1.open_time, :millisecond))
 
-        if times != Enum.sort(Enum.uniq(times)) do
-          candle_failure(symbol.id, mode, :unordered_candles)
+        if times != Enum.sort(Enum.uniq(times)) or
+             Enum.any?(Enum.chunk_every(times, 2, 1, :discard), fn [a, b] -> b - a != width end) or
+             (not is_nil(previous) and not is_nil(previous.last_synced_open_time) and times != [] and
+                hd(times) > start_ms) do
+          candle_failure(symbol.id, mode, :candle_gap, timeframe)
         else
           now = Collector.now()
 
@@ -343,44 +379,49 @@ defmodule CryptoDecisionLab.MarketData.Sync do
 
           more =
             length(raw) == 1000 and last != nil and
-              DateTime.to_unix(last.open_time, :millisecond) + @hour <= end_ms
+              DateTime.to_unix(last.open_time, :millisecond) + width <= end_ms
 
-          mark_state(symbol.id, mode, %{
-            last_synced_open_time: checkpoint,
-            range_start:
-              (previous && previous.range_start) ||
-                DateTime.from_unix!(start_ms * 1000, :microsecond),
-            status: if(more, do: "running", else: "complete"),
-            last_success_at: now,
-            last_error: nil
-          })
+          mark_state(
+            symbol.id,
+            mode,
+            %{
+              last_synced_open_time: checkpoint,
+              range_start:
+                (previous && previous.range_start) ||
+                  DateTime.from_unix!(start_ms * 1000, :microsecond),
+              status: if(more, do: "running", else: "complete"),
+              last_success_at: now,
+              last_error: nil
+            },
+            timeframe
+          )
 
           Logger.info("candles_synced", symbol: symbol.symbol, count: length(rows), mode: mode)
           {:ok, if(more, do: :more, else: :complete)}
         end
 
       {:error, reason} ->
-        candle_failure(symbol.id, mode, reason)
+        candle_failure(symbol.id, mode, reason, timeframe)
     end
   end
 
-  defp persist_batch(symbol, _, mode, _, _, _, _),
-    do: candle_failure(symbol.id, mode, :invalid_response)
+  defp persist_batch(symbol, _, mode, _, _, _, _, timeframe, _),
+    do: candle_failure(symbol.id, mode, :invalid_response, timeframe)
 
-  defp candle_failure(id, mode, reason) do
-    mark_state(id, mode, %{status: "error", last_error: safe_reason(reason)})
+  defp candle_failure(id, mode, reason, timeframe) do
+    mark_state(id, mode, %{status: "error", last_error: safe_reason(reason)}, timeframe)
     failure(reason)
   end
 
-  def state(id, type),
-    do: Repo.get_by(SyncState, market_symbol_id: id, timeframe: "1h", sync_type: type)
+  def state(id, type, timeframe \\ "1h"),
+    do: Repo.get_by(SyncState, market_symbol_id: id, timeframe: timeframe, sync_type: type)
 
-  def mark_state(id, type, attrs) do
+  def mark_state(id, type, attrs, timeframe \\ "1h") do
     now = Collector.now()
 
     base = %{
       market_symbol_id: id,
-      timeframe: "1h",
+      timeframe: timeframe,
       sync_type: to_string(type),
       status: "pending",
       inserted_at: now,

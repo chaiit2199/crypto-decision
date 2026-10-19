@@ -9,6 +9,7 @@ import { formatTime, priceStatus } from "@/lib/format/market";
 import { selectedMarket } from "@/lib/markets/selected-market";
 import type { QuoteAsset } from "@/lib/markets/selected-market";
 
+import { OpportunityScanner } from "./opportunity-scanner";
 import { MarketRow } from "./market-row";
 import { MarketDetails } from "./market-details";
 
@@ -246,6 +247,12 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                 />
             )}
 
+            <OpportunityScanner
+                key={quoteAsset}
+                exchange={quoteAsset === "USDT" ? "binance" : "coinbase"}
+                now={now}
+                refreshVersion={refreshVersion}
+            />
             <section className="market-monitor__panel" aria-labelledby="watchlist-title">
                 <div className="market-monitor__toolbar">
                     <div>

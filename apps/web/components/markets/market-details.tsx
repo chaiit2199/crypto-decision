@@ -9,6 +9,7 @@ import type { QuoteAsset } from "@/lib/markets/selected-market";
 
 import { MarketHistory } from "./market-history";
 import { MarketAnalysis } from "./market-analysis";
+import { TradingWorkbench } from "./trading-workbench";
 import { PriceFlash } from "./price-flash";
 
 type MarketDetailsProps = {
@@ -19,7 +20,7 @@ type MarketDetailsProps = {
     refreshVersion: number;
 };
 
-const TIMEFRAMES: Timeframe[] = ["1h", "4h", "1d"];
+const TIMEFRAMES: Timeframe[] = ["5m", "15m", "1h", "4h", "1d"];
 
 export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refreshVersion }: MarketDetailsProps) {
     const [timeframe, setTimeframe] = useState<Timeframe>("1h");
@@ -90,7 +91,7 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
                             <div className="market-details__chart-header">
                                 <h3>Lịch sử giá</h3>
                                 <div className="market-details__timeframes" role="group" aria-label="Khung thời gian biểu đồ">
-                                    {TIMEFRAMES.map((value) => (
+                                    {TIMEFRAMES.filter((value) => market.exchange === "binance" || !["5m", "15m"].includes(value)).map((value) => (
                                         <button
                                             key={value}
                                             type="button"
@@ -119,6 +120,14 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
                 </div>
                 <MarketAnalysis market={market} now={now} />
             </div>
+            {market && market.exchange !== "gold_api" && (
+                <TradingWorkbench
+                    key={`${market.exchange}:${market.symbol}`}
+                    market={market}
+                    now={now}
+                    refreshVersion={refreshVersion}
+                />
+            )}
         </section>
     );
 }

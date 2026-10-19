@@ -98,8 +98,24 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     symbol = F.symbol()
     current = DateTime.to_unix(~U[2026-10-17 12:00:00Z], :millisecond)
     F.queue([F.response([F.kline(), F.kline(F.start() + 2 * F.hour()), F.kline(current)])])
+    assert {:error, :candle_gap} = Sync.candles(symbol.id, :backfill, from: F.start())
+    assert Repo.aggregate(Candle, :count) == 0
+    assert Sync.state(symbol.id, "backfill").last_synced_open_time == nil
+
+    F.queue([
+      F.response([
+        F.kline(),
+        F.kline(F.start() + F.hour()),
+        F.kline(F.start() + 2 * F.hour()),
+        F.kline(current)
+      ])
+    ])
+
     assert {:ok, :complete} = Sync.candles(symbol.id, :backfill, from: F.start())
-    assert Repo.aggregate(Candle, :count) == 2
+    assert Repo.aggregate(Candle, :count) == 3
+    # Simulate a later missing stored row; daily integrity still schedules its repair.
+    missing = DateTime.from_unix!(F.start() + F.hour(), :millisecond)
+    Repo.delete_all(from c in Candle, where: c.open_time == ^missing)
     assert length(Integrity.gaps(symbol.id, ~U[2026-10-17 03:00:10Z])) == 1
     assert {:ok, 10} = Integrity.check()
 

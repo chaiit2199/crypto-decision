@@ -1,0 +1,134 @@
+.trading-workbench {
+    @apply my-6 rounded-xl border p-4;
+    border-color: var(--border);
+    background: var(--surface);
+
+    @media (min-width: 768px) {
+        @apply p-6;
+    }
+
+    h2 {
+        @apply text-xl font-semibold;
+    }
+
+    h3 {
+        @apply mt-5 text-base font-semibold;
+    }
+
+    p,
+    small {
+        @apply my-2 text-sm leading-relaxed;
+        color: var(--muted);
+    }
+
+    &__header {
+        @apply flex flex-wrap items-center justify-between gap-4;
+    }
+
+    label {
+        @apply grid gap-2 text-sm;
+    }
+
+    input,
+    select,
+    button {
+        @apply rounded-lg border px-3 py-2 text-sm;
+        border-color: var(--border);
+        background: var(--background);
+        color: var(--text);
+    }
+
+    input,
+    select {
+        @apply w-full;
+        min-width: 0;
+    }
+
+    button:disabled {
+        @apply cursor-wait opacity-60;
+    }
+
+    :is(button, input, select, summary):focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+    }
+
+    &__status {
+        @apply rounded-lg border p-3;
+        border-color: var(--accent);
+    }
+
+    &__flags {
+        @apply my-3 flex flex-wrap gap-2;
+
+        li {
+            @apply rounded border px-2 py-1 text-xs;
+            border-color: var(--border);
+            color: var(--muted);
+        }
+    }
+
+    &__metrics {
+        @apply my-4 grid gap-3;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+
+        > div {
+            @apply rounded-lg border p-3;
+            border-color: var(--border);
+            min-width: 0;
+        }
+
+        dt {
+            @apply text-sm font-medium;
+        }
+
+        dd {
+            @apply mt-2 break-words text-xs leading-relaxed;
+            color: var(--muted);
+        }
+
+        dt + dd {
+            @apply text-base font-semibold;
+            color: var(--text);
+        }
+    }
+
+    &__frame {
+        @apply my-3 border-t pt-3;
+        border-color: var(--border);
+
+        summary {
+            @apply cursor-pointer text-sm font-medium;
+        }
+    }
+
+    &__form {
+        @apply my-4 grid gap-4;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    }
+
+    &__actions {
+        @apply flex flex-wrap gap-3;
+    }
+
+    &__table {
+        @apply mt-4 overflow-x-auto;
+
+        table {
+            @apply w-full text-left text-sm;
+            min-width: 800px;
+        }
+
+        th,
+        td {
+            @apply border-b p-3 align-top;
+            border-color: var(--border);
+        }
+
+        small {
+            @apply block;
+            min-width: 220px;
+            max-width: 420px;
+        }
+    }
+}

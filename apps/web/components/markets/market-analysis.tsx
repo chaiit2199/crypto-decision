@@ -20,8 +20,8 @@ const CHOICE_LABELS: Record<string, string> = {
 };
 
 const SIGNAL_LABELS = {
-    BUY: "BUY · Tín hiệu theo dõi mua",
-    SELL: "SELL · Tín hiệu theo dõi bán",
+    BUY: "Ứng viên tăng · Chưa đủ điều kiện giao dịch",
+    SELL: "Ứng viên giảm · Chỉ xem xét thoát vị thế Spot",
     WAIT: "WAIT · Chờ tín hiệu rõ hơn",
     NO_DATA: "NO_DATA · Chưa đủ dữ liệu",
 };
@@ -29,18 +29,66 @@ const SIGNAL_LABELS = {
 const ANSWER_NAMES: Record<string, string> = { trend: "Xu hướng", momentum: "Động lượng", volatility: "Biến động" };
 
 const INDICATORS = [
-    { key: "ema20", name: "EMA20", description: "Giá trung bình có trọng số 20 giờ; phản ánh xu hướng ngắn hạn." },
-    { key: "ema50", name: "EMA50", description: "Xu hướng trung hạn trong cửa sổ 50 nến 1H." },
-    { key: "ema200", name: "EMA200", description: "Mốc xu hướng dài hơn, tính trên nến 1H." },
-    { key: "rsi14", name: "RSI14", description: "Động lượng 0–100; trên 70/dưới 30 là vùng cực trị, không tự chứng minh đảo chiều." },
-    { key: "macd", name: "MACD (12/26)", description: "Chênh lệch EMA12 và EMA26; dương khi EMA nhanh nằm trên EMA chậm." },
-    { key: "macd_signal", name: "MACD Signal (9)", description: "Đường EMA9 của MACD, dùng so sánh động lượng." },
-    { key: "macd_histogram", name: "MACD Histogram", description: "MACD trừ Signal; thể hiện chênh lệch động lượng." },
-    { key: "atr14", name: "ATR14", description: "Biên độ dao động trung bình 14 nến, theo đơn vị giá; không chỉ hướng tăng/giảm." },
-    { key: "adx14", name: "ADX14", description: "Sức mạnh xu hướng 0–100; không cho biết hướng tăng hay giảm." },
-    { key: "relative_volume20", name: "Khối lượng tương đối (20)", description: "Volume nến cuối chia trung bình 20 nến trước; trên 1 là cao hơn mức trung bình." },
-    { key: "return_1h_percent", name: "Biến động 1H (%)", description: "Mức thay đổi giữa hai giá đóng cửa 1H gần nhất." },
-    { key: "return_24h_percent", name: "Biến động 24H (%)", description: "Thay đổi giữa giá đóng cửa hiện tại và 24 nến 1H trước." },
+    {
+        key: "ema20",
+        name: "EMA20",
+        description: "Trung bình giá hàm mũ chu kỳ 20 nến 1H, ưu tiên giá gần đây để theo dõi xu hướng ngắn hạn.",
+    },
+    {
+        key: "ema50",
+        name: "EMA50",
+        description: "Trung bình giá hàm mũ chu kỳ 50 nến 1H, giúp quan sát xu hướng ít nhạy hơn EMA20.",
+    },
+    {
+        key: "ema200",
+        name: "EMA200",
+        description: "Trung bình giá hàm mũ chu kỳ 200 nến 1H, dùng làm mốc tham chiếu xu hướng dài hơn.",
+    },
+    {
+        key: "rsi14",
+        name: "RSI14",
+        description: "Đo động lượng giá chu kỳ 14 nến trên thang 0–100; giá trị cao cho thấy mức tăng chiếm ưu thế.",
+    },
+    {
+        key: "macd",
+        name: "MACD (12/26)",
+        description: "Chênh lệch EMA12 và EMA26, cho biết đường trung bình nhanh đang cao hay thấp hơn đường chậm.",
+    },
+    {
+        key: "macd_signal",
+        name: "MACD Signal (9)",
+        description: "Đường trung bình hàm mũ 9 kỳ của MACD, dùng làm mốc so sánh để nhận biết thay đổi động lượng.",
+    },
+    {
+        key: "macd_histogram",
+        name: "MACD Histogram",
+        description: "MACD trừ đường Signal; dương khi MACD nằm trên Signal, âm khi nằm dưới.",
+    },
+    {
+        key: "atr14",
+        name: "ATR14",
+        description: "Đo biên độ biến động giá chu kỳ 14 nến, theo đơn vị giá của cặp; không cho biết hướng tăng/giảm.",
+    },
+    {
+        key: "adx14",
+        name: "ADX14",
+        description: "Đo sức mạnh xu hướng chu kỳ 14 nến trên thang 0–100; càng cao, xu hướng càng mạnh, bất kể hướng.",
+    },
+    {
+        key: "relative_volume20",
+        name: "Khối lượng tương đối (20)",
+        description: "Khối lượng nến đã đóng gần nhất chia trung bình 20 nến trước; trên 1 là cao hơn trung bình.",
+    },
+    {
+        key: "return_1h_percent",
+        name: "Biến động 1H (%)",
+        description: "Phần trăm thay đổi giữa hai giá đóng cửa 1H gần nhất; dương là tăng, âm là giảm.",
+    },
+    {
+        key: "return_24h_percent",
+        name: "Biến động 24H (%)",
+        description: "Phần trăm thay đổi của giá đóng cửa gần nhất so với 24 nến 1H trước; dương là tăng, âm là giảm.",
+    },
 ] as const;
 
 const REASON_LABELS: Record<string, string> = {

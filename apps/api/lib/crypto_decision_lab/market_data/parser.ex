@@ -1,7 +1,7 @@
 defmodule CryptoDecisionLab.MarketData.Parser do
   @moduledoc "Strict normalization of untrusted market payloads; no float conversions."
   alias CryptoDecisionLab.MarketData.SnapshotTime
-  @hour 3_600_000
+  @widths %{"5m" => 300_000, "15m" => 900_000, "1h" => 3_600_000}
 
   def decimal(value) when is_binary(value) and byte_size(value) <= 72 do
     parsed =
@@ -54,6 +54,8 @@ defmodule CryptoDecisionLab.MarketData.Parser do
 
   def stats(_, _), do: {:error, :invalid_stats}
 
+  def candle(row, now), do: candle(row, now, "1h")
+
   def candle(
         [
           open_ms,
@@ -69,10 +71,13 @@ defmodule CryptoDecisionLab.MarketData.Parser do
           taker_quote,
           _
         ],
-        now
+        now,
+        timeframe
       )
       when is_integer(open_ms) and is_integer(close_ms) and is_integer(trades) and trades >= 0 and
              trades <= 9_223_372_036_854_775_807 do
+    width = @widths[timeframe]
+
     raw = %{
       open: open,
       high: high,
@@ -84,7 +89,8 @@ defmodule CryptoDecisionLab.MarketData.Parser do
       taker_buy_quote_volume: taker_quote
     }
 
-    with true <- open_ms >= 0 and rem(open_ms, @hour) == 0 and close_ms == open_ms + @hour - 1,
+    with true <- is_integer(width),
+         true <- open_ms >= 0 and rem(open_ms, width) == 0 and close_ms == open_ms + width - 1,
          {:ok, values} <- decimals(raw, Enum.map(Map.keys(raw), &{&1, &1})),
          true <- valid_ohlcv?(values),
          {:ok, open_time} <- DateTime.from_unix(open_ms * 1000, :microsecond),
@@ -92,7 +98,7 @@ defmodule CryptoDecisionLab.MarketData.Parser do
       if close_ms < DateTime.to_unix(now, :millisecond) - 5000 do
         {:ok,
          Map.merge(values, %{
-           timeframe: "1h",
+           timeframe: timeframe,
            open_time: open_time,
            close_time: close_time,
            trade_count: trades
@@ -105,7 +111,7 @@ defmodule CryptoDecisionLab.MarketData.Parser do
     end
   end
 
-  def candle(_, _), do: {:error, :invalid_candle}
+  def candle(_, _, _), do: {:error, :invalid_candle}
 
   defp decimals(raw, fields) do
     Enum.reduce_while(fields, {:ok, %{}}, fn {target, source}, {:ok, values} ->

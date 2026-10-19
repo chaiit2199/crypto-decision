@@ -15,7 +15,7 @@ defmodule CryptoDecisionLab.MarketData.SyncWorker do
   @spec enqueue(map()) :: {:ok, Oban.Job.t()} | {:error, Ecto.Changeset.t()}
   def enqueue(args) do
     kind = Map.get(args, :kind) || Map.get(args, "kind")
-    priority = if kind in ["backfill", "repair"], do: 3, else: 0
+    priority = if kind in ["backfill", "repair", "short_candles"], do: 3, else: 0
     args |> new(priority: priority) |> Oban.insert()
   end
 

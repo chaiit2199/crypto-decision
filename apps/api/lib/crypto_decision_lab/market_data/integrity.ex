@@ -9,7 +9,9 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
   def gaps(symbol_id, until_time \\ Collector.now()) do
     first =
       Repo.one(
-        from c in Candle, where: c.market_symbol_id == ^symbol_id, select: min(c.open_time)
+        from c in Candle,
+          where: c.market_symbol_id == ^symbol_id and c.timeframe == "1h",
+          select: min(c.open_time)
       )
 
     if first do
@@ -36,7 +38,11 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
       counts =
         for symbol <- Sync.active_symbols() do
           missing = gaps(symbol.id)
-          has_history = Repo.exists?(from c in Candle, where: c.market_symbol_id == ^symbol.id)
+
+          has_history =
+            Repo.exists?(
+              from c in Candle, where: c.market_symbol_id == ^symbol.id and c.timeframe == "1h"
+            )
 
           status =
             cond do
@@ -71,7 +77,7 @@ defmodule CryptoDecisionLab.MarketData.Integrity do
   end
 
   @spec aggregate([map()], String.t()) :: {:ok, [map()]} | {:error, atom()}
-  def aggregate(candles, "1h"), do: {:ok, candles}
+  def aggregate(candles, timeframe) when timeframe in ["5m", "15m", "1h"], do: {:ok, candles}
 
   def aggregate(candles, timeframe) when timeframe in ["4h", "1d"] do
     contiguous =

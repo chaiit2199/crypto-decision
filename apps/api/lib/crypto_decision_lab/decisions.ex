@@ -6,7 +6,7 @@ defmodule CryptoDecisionLab.Decisions do
   alias CryptoDecisionLab.MarketData.Collector
   alias CryptoDecisionLab.Decisions.{Analysis, AnalysisWorker, JevProvider}
 
-  @version "hourly-research-v2"
+  @version "hourly-research-v3"
   @spec enabled?() :: boolean()
   def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
 

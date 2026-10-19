@@ -48,6 +48,28 @@ defmodule CryptoDecisionLab.MarketData do
   def execute_sync(%{"kind" => "repair", "symbol_id" => id, "from" => first, "to" => last}),
     do: Sync.candles(id, :repair, from: first, to: last)
 
+  def execute_sync(%{"kind" => "workbench"}) do
+    Enum.each(Sync.active_symbols(), fn symbol ->
+      SyncWorker.enqueue(%{kind: "liquidity", symbol_id: symbol.id})
+
+      for timeframe <- ["5m", "15m"] do
+        SyncWorker.enqueue(%{kind: "short_candles", symbol_id: symbol.id, timeframe: timeframe})
+      end
+    end)
+
+    {:ok, :queued}
+  end
+
+  def execute_sync(%{"kind" => "liquidity", "symbol_id" => id}),
+    do: CryptoDecisionLab.MarketData.Liquidity.sync(id)
+
+  def execute_sync(%{"kind" => "short_candles", "symbol_id" => id, "timeframe" => timeframe})
+      when timeframe in ["5m", "15m"] do
+    state = Sync.state(id, "backfill", timeframe)
+    mode = if state && state.status == "complete", do: :incremental, else: :backfill
+    Sync.candles(id, mode, timeframe: timeframe)
+  end
+
   def execute_sync(_), do: {:error, :invalid_sync_command}
 
   defp enqueue_symbols(kind) do
@@ -96,10 +118,10 @@ defmodule CryptoDecisionLab.MarketData do
         Repo.all(
           from c in Candle,
             where:
-              c.market_symbol_id == ^record.id and c.timeframe == "1h" and
+              c.market_symbol_id == ^record.id and c.timeframe == ^range.source and
                 c.open_time >= ^range.from and c.open_time < ^range.to,
             order_by: c.open_time,
-            limit: ^(range.limit * range.hours)
+            limit: ^(range.limit * range.multiplier)
         )
 
       rows = Enum.map(rows, &fields/1)
@@ -117,7 +139,7 @@ defmodule CryptoDecisionLab.MarketData do
            freshness:
              freshness(
                if(values == [], do: nil, else: List.last(values).close_time),
-               range.hours * 3600 + 60
+               range.width + 60
              )
          }}
       end
@@ -127,10 +149,9 @@ defmodule CryptoDecisionLab.MarketData do
   defp candle_range(params) do
     timeframe = Map.get(params, "timeframe", "1h")
 
-    with hours when is_integer(hours) <- %{"1h" => 1, "4h" => 4, "1d" => 24}[timeframe],
+    with width when is_integer(width) <-
+           %{"5m" => 300, "15m" => 900, "1h" => 3600, "4h" => 14_400, "1d" => 86_400}[timeframe],
          {:ok, limit} <- integer(params, "limit", 100, 1, 1000) do
-      width = hours * 3600
-
       default_to =
         (div(DateTime.to_unix(Collector.now()) - 5, width) * width) |> DateTime.from_unix!()
 
@@ -143,7 +164,16 @@ defmodule CryptoDecisionLab.MarketData do
                [from, to],
                &(rem(DateTime.to_unix(&1, :microsecond), width * 1_000_000) == 0)
              ) do
-        {:ok, %{from: from, to: to, hours: hours, limit: limit, timeframe: timeframe}}
+        {:ok,
+         %{
+           from: from,
+           to: to,
+           width: width,
+           multiplier: max(div(width, 3600), 1),
+           source: if(timeframe in ["5m", "15m"], do: timeframe, else: "1h"),
+           limit: limit,
+           timeframe: timeframe
+         }}
       else
         _ -> {:error, :invalid_time_range}
       end

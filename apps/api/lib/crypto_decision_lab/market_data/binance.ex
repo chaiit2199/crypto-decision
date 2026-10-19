@@ -15,11 +15,20 @@ defmodule CryptoDecisionLab.MarketData.Binance do
   def klines(symbol, start_ms, end_ms, opts \\ []) do
     request(
       "/klines",
-      [symbol: symbol, interval: "1h", startTime: start_ms, endTime: end_ms, limit: 1000],
+      [
+        symbol: symbol,
+        interval: Keyword.get(opts, :timeframe, "1h"),
+        startTime: start_ms,
+        endTime: end_ms,
+        limit: 1000
+      ],
       2,
       opts
     )
   end
+
+  @doc "Bounded Spot depth snapshot (weight 5). Uses the shared collector budget."
+  def depth(symbol, opts \\ []), do: request("/depth", [symbol: symbol, limit: 100], 5, opts)
 
   defp request(path, params, weight, opts, attempt \\ 0) do
     budget = Keyword.get(opts, :budget, Collector)

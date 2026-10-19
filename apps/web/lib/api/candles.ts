@@ -10,7 +10,7 @@ export async function getMarketCandles(symbol: string, exchange: string, timefra
     );
     url.searchParams.set("exchange", exchange);
     url.searchParams.set("timeframe", timeframe);
-    const limit = exchange === "coinbase" ? { "1h": "120", "4h": "60", "1d": "10" }[timeframe] : "120";
+    const limit = exchange === "coinbase" ? { "5m": "120", "15m": "120", "1h": "120", "4h": "60", "1d": "10" }[timeframe] : "120";
     url.searchParams.set("limit", limit);
 
     try {

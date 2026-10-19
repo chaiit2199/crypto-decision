@@ -1,20 +1,26 @@
 defmodule CryptoDecisionLab.TechnicalAnalysis do
-  @moduledoc "Closed-hourly features. Decimal arithmetic; SMA-seeded EMA and Wilder RSI."
+  @moduledoc "Closed-candle features on explicit UTC timeframes. Decimal arithmetic; SMA-seeded EMA and Wilder RSI."
   alias Decimal, as: D
 
   @doc "Requires 300 consecutive, valid closed 1H candles, oldest first. No future data."
   @spec features([map()], DateTime.t()) :: {:ok, map()} | {:error, atom()}
-  def features(candles, now) when length(candles) == 300 do
+  def features(candles, now), do: features(candles, now, "1h")
+
+  @doc "The same closed-bar mathematics on a specified UTC timeframe; no cross-market mixing."
+  @spec features([map()], DateTime.t(), String.t()) :: {:ok, map()} | {:error, atom()}
+  def features(candles, now, timeframe)
+      when length(candles) == 300 and timeframe in ["5m", "15m", "1h", "4h", "1d"] do
+    width = %{"5m" => 300, "15m" => 900, "1h" => 3600, "4h" => 14_400, "1d" => 86_400}[timeframe]
     last = List.last(candles)
 
     cond do
-      not Enum.all?(candles, &valid_candle?(&1, now)) ->
+      not Enum.all?(candles, &valid_candle?(&1, now, timeframe, width)) ->
         {:error, :invalid_candles}
 
-      not consecutive?(candles) ->
+      not consecutive?(candles, width) ->
         {:error, :candle_gap}
 
-      DateTime.diff(now, last.close_time) > 3660 ->
+      DateTime.diff(now, last.close_time) > width + 60 ->
         {:error, :stale_candles}
 
       true ->
@@ -31,10 +37,33 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
 
         {:ok,
          %{
-           "timeframe" => "1h",
+           "timeframe" => timeframe,
            "candle_count" => 300,
            "last_close_time" => DateTime.to_iso8601(last.close_time),
            "close" => decimal(last.close),
+           "ema9" => decimal(ema(closes, 9)),
+           "ema21" => decimal(ema(closes, 21)),
+           "atr_percent" => decimal(D.mult(D.div(atr, last.close), 100)),
+           "support" =>
+             decimal(
+               candles
+               |> Enum.slice(-21, 20)
+               |> Enum.map(& &1.low)
+               |> Enum.reduce(&D.min/2)
+             ),
+           "resistance" =>
+             decimal(
+               candles
+               |> Enum.slice(-21, 20)
+               |> Enum.map(& &1.high)
+               |> Enum.reduce(&D.max/2)
+             ),
+           "vwap" => session_vwap(candles, width, now),
+           "volume_delta" =>
+             if(last.taker_buy_base_volume,
+               do: decimal(D.sub(D.mult(last.taker_buy_base_volume, 2), last.base_volume)),
+               else: nil
+             ),
            "ema20" => decimal(ema(closes, 20)),
            "ema50" => decimal(ema(closes, 50)),
            "ema200" => decimal(ema(closes, 200)),
@@ -49,17 +78,19 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
                else: decimal(D.div(last.base_volume, volume_average))
              ),
            "rsi14" => decimal(rsi(closes, 14)),
-           "return_1h_percent" => decimal(return_percent(last.close, Enum.at(closes, -2))),
-           "return_24h_percent" => decimal(return_percent(last.close, Enum.at(closes, -25)))
+           if(timeframe == "1h", do: "return_1h_percent", else: "return_1bar_percent") =>
+             decimal(return_percent(last.close, Enum.at(closes, -2))),
+           if(timeframe == "1h", do: "return_24h_percent", else: "return_24bar_percent") =>
+             decimal(return_percent(last.close, Enum.at(closes, -25)))
          }}
     end
   end
 
-  def features(_, _), do: {:error, :insufficient_candles}
+  def features(_, _, _), do: {:error, :insufficient_candles}
 
-  defp valid_candle?(candle, now) do
-    candle.timeframe == "1h" and rem(DateTime.to_unix(candle.open_time), 3600) == 0 and
-      DateTime.diff(candle.close_time, candle.open_time, :millisecond) == 3_599_999 and
+  defp valid_candle?(candle, now, timeframe, width) do
+    candle.timeframe == timeframe and rem(DateTime.to_unix(candle.open_time), width) == 0 and
+      DateTime.diff(candle.close_time, candle.open_time, :millisecond) == width * 1000 - 1 and
       DateTime.compare(candle.close_time, DateTime.add(now, -5)) == :lt and
       D.positive?(candle.low) and D.compare(candle.high, candle.low) != :lt and
       D.compare(candle.low, candle.open) != :gt and D.compare(candle.low, candle.close) != :gt and
@@ -67,12 +98,29 @@ defmodule CryptoDecisionLab.TechnicalAnalysis do
       D.compare(candle.base_volume, 0) != :lt
   end
 
-  defp consecutive?(candles) do
+  defp consecutive?(candles, width) do
     candles
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.all?(fn [first, second] ->
-      DateTime.diff(second.open_time, first.open_time) == 3600
+      DateTime.diff(second.open_time, first.open_time) == width
     end)
+  end
+
+  defp session_vwap(candles, width, now) do
+    day = DateTime.to_date(now)
+    rows = Enum.filter(candles, &(DateTime.to_date(&1.open_time) == day))
+
+    complete =
+      rows != [] and Time.compare(DateTime.to_time(hd(rows).open_time), ~T[00:00:00]) == :eq and
+        consecutive?(rows, width) and Enum.all?(rows, &(not is_nil(&1.quote_volume)))
+
+    if complete do
+      base = Enum.reduce(rows, D.new(0), &D.add(&2, &1.base_volume))
+      quote = Enum.reduce(rows, D.new(0), &D.add(&2, &1.quote_volume))
+      if D.positive?(base), do: decimal(D.div(quote, base)), else: nil
+    else
+      nil
+    end
   end
 
   defp ema(values, period) do
