@@ -17,11 +17,21 @@ defmodule CryptoDecisionLab.Repo.Migrations.PruneMarketUniverse do
     IO BONK WIF WLD
   )
 
+  # DELETE is blocked by immutable audit triggers; drop only for this prune.
+  @immutable_triggers [
+    {"trading_simulations", "trading_simulations_immutable", "trading_reject_mutation"},
+    {"knowledge_realized_outcomes", "knowledge_realized_outcomes_immutable",
+     "knowledge_reject_mutation"},
+    {"knowledge_ai_decisions", "knowledge_ai_decisions_immutable", "knowledge_reject_mutation"},
+    {"knowledge_matches", "knowledge_matches_immutable", "knowledge_reject_mutation"}
+  ]
+
   def up do
     keep_list = Enum.map_join(@keep, ", ", &"'#{&1}'")
 
-    # Simulation rows are normally immutable; allow delete only for this prune.
-    execute "DROP TRIGGER IF EXISTS trading_simulations_immutable ON trading_simulations"
+    for {table, trigger, _fun} <- @immutable_triggers do
+      execute "DROP TRIGGER IF EXISTS #{trigger} ON #{table}"
+    end
 
     execute """
     WITH obsolete_symbols AS (
@@ -154,12 +164,14 @@ defmodule CryptoDecisionLab.Repo.Migrations.PruneMarketUniverse do
     WHERE symbol NOT IN (#{keep_list})
     """
 
-    execute """
-    CREATE TRIGGER trading_simulations_immutable
-    BEFORE UPDATE OR DELETE OR TRUNCATE ON trading_simulations
-    FOR EACH STATEMENT
-    EXECUTE FUNCTION trading_reject_mutation()
-    """
+    for {table, trigger, fun} <- @immutable_triggers do
+      execute """
+      CREATE TRIGGER #{trigger}
+      BEFORE UPDATE OR DELETE OR TRUNCATE ON #{table}
+      FOR EACH STATEMENT
+      EXECUTE FUNCTION #{fun}()
+      """
+    end
   end
 
   def down do
