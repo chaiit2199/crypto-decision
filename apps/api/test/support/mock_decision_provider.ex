@@ -16,7 +16,14 @@ defmodule CryptoDecisionLab.MockDecisionProvider do
         "trend" => answer("BULLISH", %{"BULLISH" => 0.8, "BEARISH" => 0.1, "SIDEWAYS" => 0.1}),
         "momentum" =>
           answer("STRENGTHENING", %{"STRENGTHENING" => 0.8, "WEAKENING" => 0.1, "MIXED" => 0.1}),
-        "volatility" => answer("NORMAL", %{"NORMAL" => 0.8, "ELEVATED" => 0.2})
+        "volatility" => answer("NORMAL", %{"NORMAL" => 0.8, "ELEVATED" => 0.2}),
+        "holding_horizon" =>
+          answer("INTRADAY", %{
+            "SCALP" => 0.1,
+            "INTRADAY" => 0.7,
+            "SWING" => 0.1,
+            "UNSUITABLE" => 0.1
+          })
       }
     }
   end

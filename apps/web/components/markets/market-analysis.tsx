@@ -20,6 +20,10 @@ const CHOICE_LABELS: Record<string, string> = {
     MIXED: "Tín hiệu xung đột",
     ELEVATED: "Biến động cao",
     NORMAL: "Chưa thấy biến động cao",
+    SCALP: "Scalp · Vài phút",
+    INTRADAY: "Intraday · Trong ngày",
+    SWING: "Swing · Nhiều ngày",
+    UNSUITABLE: "Chưa phù hợp giữ lệnh",
 };
 
 const SIGNAL_LABELS = {
@@ -33,6 +37,7 @@ const ANSWER_NAMES: Record<string, string> = {
     trend: "Xu hướng",
     momentum: "Động lượng",
     volatility: "Biến động",
+    holding_horizon: "Khung giữ (nghiên cứu)",
 };
 
 const INDICATORS = [

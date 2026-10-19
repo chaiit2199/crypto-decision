@@ -2,11 +2,12 @@ defmodule CryptoDecisionLab.Decisions do
   @moduledoc "Research analysis on configured UTC slots. Reads never trigger paid provider calls."
   import Ecto.Query
   require Logger
-  alias CryptoDecisionLab.{Repo, MarketData, TechnicalAnalysis}
+  alias CryptoDecisionLab.{Repo, MarketData, TechnicalAnalysis, Trading}
   alias CryptoDecisionLab.MarketData.Collector
   alias CryptoDecisionLab.Decisions.{Analysis, AnalysisWorker, JevProvider}
+  alias CryptoDecisionLab.Trading.Assessment
 
-  @version "hourly-research-v3"
+  @version "hourly-research-v4-horizon"
   @spec enabled?() :: boolean()
   def enabled?, do: Application.get_env(:crypto_decision_lab, :jev, [])[:enabled] == true
 
@@ -100,7 +101,11 @@ defmodule CryptoDecisionLab.Decisions do
       result =
         with {:ok, inputs} <- MarketData.analysis_inputs(symbol_id, now),
              {:ok, features} <- TechnicalAnalysis.features(inputs.candles, now) do
-          features = Map.merge(features, inputs.snapshot)
+          features =
+            features
+            |> Map.merge(inputs.snapshot)
+            |> Map.put("context_timeframes", context_timeframes(symbol_id, now))
+
           attrs = Map.merge(attrs, %{features: features, data_at: inputs.price_at})
           evaluate(attrs, features, now)
         else
@@ -180,6 +185,26 @@ defmodule CryptoDecisionLab.Decisions do
       {"BEARISH", "WEAKENING", "NORMAL"} -> "SELL"
       _ -> "WAIT"
     end
+  end
+
+  # Bounded multi-timeframe summary for horizon classification; missing frames stay explicit.
+  defp context_timeframes(symbol_id, now) do
+    Map.new(["5m", "15m", "1h", "4h", "1d"], fn timeframe ->
+      frame = Trading.frame(symbol_id, timeframe, now)
+      features = frame["features"] || %{}
+
+      {timeframe,
+       %{
+         "status" => frame["status"],
+         "reason" => frame["reason"],
+         "regime" => Assessment.regime(features),
+         "atr_percent" => features["atr_percent"],
+         "ema20" => features["ema20"],
+         "ema50" => features["ema50"],
+         "ema200" => features["ema200"],
+         "last_close_time" => features["last_close_time"]
+       }}
+    end)
   end
 
   @doc "Latest analysis per symbol, with expiry calculated at read time; no provider I/O."

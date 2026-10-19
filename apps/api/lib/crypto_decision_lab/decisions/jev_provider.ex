@@ -5,7 +5,8 @@ defmodule CryptoDecisionLab.Decisions.JevProvider do
   @choices %{
     "trend" => ~w(BULLISH BEARISH SIDEWAYS),
     "momentum" => ~w(STRENGTHENING WEAKENING MIXED),
-    "volatility" => ~w(ELEVATED NORMAL)
+    "volatility" => ~w(ELEVATED NORMAL),
+    "holding_horizon" => ~w(SCALP INTRADAY SWING UNSUITABLE)
   }
 
   @doc "Whether a non-empty local credential is configured; does not assert upstream validity."
@@ -70,6 +71,21 @@ defmodule CryptoDecisionLab.Decisions.JevProvider do
         criteria: %{
           ELEVATED: "Large price swings or conflicting abrupt price moves warrant caution.",
           NORMAL: "Supplied price movements do not show elevated volatility."
+        }
+      },
+      holding_horizon: %{
+        type: "choice",
+        instructions:
+          "Classify which RESEARCH holding style best matches the OBSERVED multi-timeframe structure in features.context_timeframes (and hourly features). Do not predict future returns, win rates, or investment performance. Prefer shorter horizons or UNSUITABLE when higher timeframes are missing, conflicting, or show elevated ATR%. Confidence is classification confidence only.",
+        criteria: %{
+          SCALP:
+            "Observable structure is mainly short (15m/5m); higher timeframes are missing, mixed, or do not support a longer hold.",
+          INTRADAY:
+            "4H (or equivalent) context supports a same-day research hold with 15m/5m confirmation available.",
+          SWING:
+            "1D and 4H structure are aligned enough to research a multi-day hold; not a claim of long-term investing edge.",
+          UNSUITABLE:
+            "Data insufficient, timeframe conflict, or elevated volatility makes a discretionary research hold unsuitable right now."
         }
       }
     }

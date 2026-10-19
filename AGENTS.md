@@ -56,14 +56,16 @@ AGENTS.md
 
 ## D. Danh mục tài sản và Binance
 
-Danh mục ban đầu có đúng 32 asset, quote mặc định `USDT`:
+Danh mục nghiên cứu hiện tại (21 asset, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`:
 
 | Nhóm | Asset |
 | --- | --- |
-| Core / Layer-1 | BTC, ETH, SOL, BNB, XRP, ADA, AVAX, TON, SUI, NEAR |
-| Infrastructure / Oracle / RWA | LINK, ONDO, RENDER, GRT, XLM, ALGO, ZEC, INJ, KAS, QNT |
-| DeFi / Layer-2 / Web3 | ARB, HYPE, AAVE, UNI, ALT, OP, SEI, HNT |
-| Meme / High Risk | DOGE, SHIB, PEPE, MEW |
+| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER |
+| Tiềm năng cao | TIA, ONDO, PYTH, EIGEN, ASI |
+| Vốn hóa vừa | TAO, IMX, BEAM, AKT, HNT |
+| Mở rộng | IO, MKR, CFG, HONEY, BONK |
+
+Seed upsert danh mục này và `enabled=false` các asset đã bị gỡ khỏi `@groups`. Không xóa lịch sử nến/phân tích. Cặp Spot USDT thực tế do `exchangeInfo` xác minh; mã không có trên Binance vẫn giữ trong danh mục với trạng thái không khả dụng.
 
 - Base URL theo đặc tả: `https://data-api.binance.vision/api/v3`. Chỉ dùng public Spot market-data endpoints được tài liệu hóa: `/exchangeInfo`, `/ticker/price`, `/ticker/24hr`, `/klines`.
 - Trước khi viết adapter, đọc tài liệu Binance chính thức để xác minh tham số, giới hạn batch, request weight, rate limit và JSON schema thực tế cho cả thành công và lỗi.
@@ -140,7 +142,7 @@ GET /api/system/market-data-status
 
 Chỉ đánh dấu Phase 1 hoàn thành khi xác minh đủ:
 
-- PostgreSQL khởi động và migrations chạy được; đăng ký đúng 32 asset và xác minh symbol Binance.
+- PostgreSQL khởi động và migrations chạy được; đăng ký đúng danh mục `Universe` hiện tại và xác minh symbol Binance.
 - Giá và thống kê 24h đồng bộ được; poll giá mỗi 30 giây không chồng lấn.
 - Backfill và incremental sync hoạt động, resume được, không trùng candle, không lưu candle chưa đóng và phát hiện được gaps.
 - Xử lý đúng rate limit, endpoint trả JSON hợp lệ, test phù hợp chạy thành công và README đủ để chạy hệ thống.

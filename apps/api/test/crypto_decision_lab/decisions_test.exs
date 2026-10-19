@@ -53,7 +53,13 @@ defmodule CryptoDecisionLab.DecisionsTest do
     assert {:ok, %Analysis{status: "ready", signal: "BUY", model: "fixture-jev"} = row} =
              Decisions.analyze(symbol.id, slot)
 
-    assert_receive {:jev_called, %{"symbol" => "BTCUSDT", "ema20" => _}}
+    assert_receive {:jev_called, features}
+    assert features["symbol"] == "BTCUSDT"
+    assert features["ema20"]
+    assert is_map(features["context_timeframes"]["1h"])
+    assert features["context_timeframes"]["1h"]["status"] in ["ready", "no_data"]
+    assert row.answers["holding_horizon"]["choice"] == "INTRADAY"
+    assert row.configuration_version == "hourly-research-v4-horizon"
     assert {:ok, %{id: id}} = Decisions.analyze(symbol.id, slot)
     assert id == row.id
 
@@ -69,11 +75,14 @@ defmodule CryptoDecisionLab.DecisionsTest do
     assert {:ok, %{status: "no_data", signal: "NO_DATA", reason: "missing_snapshots"}} =
              Decisions.analyze(symbol.id, slot)
 
-    other = MarketFixtures.symbol("ETH")
+    other = MarketFixtures.symbol("ARB")
     AnalysisFixtures.seed(other)
 
+    stale_at =
+      DateTime.add(MarketFixtures.now(), -(MarketData.price_max_age_seconds() + 30))
+
     Repo.update_all(CryptoDecisionLab.MarketData.LatestPrice,
-      set: [fetched_at: DateTime.add(MarketFixtures.now(), -181)]
+      set: [fetched_at: stale_at, data_at: stale_at]
     )
 
     assert {:ok, %{reason: "stale_price"}} = Decisions.analyze(other.id, slot)
@@ -152,7 +161,7 @@ defmodule CryptoDecisionLab.DecisionsTest do
     Process.put(:jev_result, {:error, "authentication_failed", 900})
     assert {:ok, %{status: "error", signal: "NO_DATA"}} = Decisions.analyze(symbol.id, slot)
     assert_receive {:jev_called, _}
-    other = MarketFixtures.symbol("ETH")
+    other = MarketFixtures.symbol("ARB")
     AnalysisFixtures.seed(other)
 
     assert {:ok, %{status: "error", reason: "authentication_failed"}} =
@@ -176,6 +185,13 @@ defmodule CryptoDecisionLab.DecisionsTest do
       assert options[:redirect] == false
       assert options[:retry] == false
       assert options[:json].questions.trend.type == "choice"
+      assert options[:json].questions.holding_horizon.type == "choice"
+
+      assert options[:json].questions.holding_horizon.criteria
+             |> Map.keys()
+             |> Enum.map(&to_string/1)
+             |> Enum.sort() == ~w(INTRADAY SCALP SWING UNSUITABLE)
+
       {:ok, %{status: 401, body: %{"sensitive" => "do not propagate"}}}
     end)
 
@@ -206,7 +222,9 @@ defmodule CryptoDecisionLab.DecisionsTest do
           put_in(body, ["answers", "trend", "choice"], "BUY_NOW"),
           put_in(body, ["answers", "trend", "confidence"], 2),
           put_in(body, ["answers", "trend", "probabilities", "BULLISH"], 0.1),
-          put_in(body, ["answers", "trend"], nil)
+          put_in(body, ["answers", "trend"], nil),
+          put_in(body, ["answers", "holding_horizon", "choice"], "LONG_TERM"),
+          Map.update!(body, "answers", &Map.delete(&1, "holding_horizon"))
         ] do
       assert {:error, "invalid_response", 60} =
                JevProvider.decode({:ok, %{status: 200, body: invalid}})

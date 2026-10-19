@@ -13,6 +13,9 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
 
   alias Decimal, as: D
 
+  # Research distance bands around mid; visible depth only, never labelled as S/R.
+  @band_pcts ["0.1", "0.25", "0.5", "1.0"]
+
   @spec sync(integer()) :: {:ok, term()} | {:error, term()}
   def sync(id) do
     Collector.run(fn ->
@@ -33,14 +36,15 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
                {:ok, _} <- parse(response.body) do
             if is_nil(existing) or
                  DateTime.compare(response.fetched_at, existing.fetched_at) == :gt do
+              # HTTP Date / second-precision clocks must become utc_datetime_usec before insert.
               Repo.insert_all(
                 LiquiditySnapshot,
                 [
                   %{
                     market_symbol_id: id,
                     book: response.body,
-                    data_at: response.server_time,
-                    fetched_at: response.fetched_at
+                    data_at: usec(response.server_time),
+                    fetched_at: usec(response.fetched_at)
                   }
                 ],
                 conflict_target: [:market_symbol_id],
@@ -62,6 +66,8 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
          true <- D.compare(hd(bids).price, hd(asks).price) == :lt do
       bid = hd(bids).price
       ask = hd(asks).price
+      mid = D.div(D.add(bid, ask), 2)
+      spread_percent = D.mult(D.div(D.sub(ask, bid), mid), 100)
       bid_depth = total(bids)
       ask_depth = total(asks)
 
@@ -71,10 +77,14 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
          asks: asks,
          bid: bid,
          ask: ask,
-         spread_percent: D.mult(D.div(D.sub(ask, bid), D.div(D.add(ask, bid), 2)), 100),
+         mid_price: mid,
+         spread_percent: spread_percent,
+         spread_bps: D.mult(spread_percent, 100),
          bid_depth: bid_depth,
          ask_depth: ask_depth,
-         imbalance: D.div(D.sub(bid_depth, ask_depth), D.add(bid_depth, ask_depth))
+         imbalance: imbalance(bid_depth, ask_depth),
+         bands: Enum.map(@band_pcts, &band(bids, asks, mid, &1)),
+         last_update_id: id
        }}
     else
       _ -> {:error, :invalid_order_book}
@@ -82,6 +92,37 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
   end
 
   def parse(_), do: {:error, :invalid_order_book}
+
+  @doc "Quote-notional imbalance in [-1, 1]; unavailable when both sides are zero."
+  @spec imbalance(Decimal.t(), Decimal.t()) :: Decimal.t() | nil
+  def imbalance(bid_notional, ask_notional) do
+    denom = D.add(bid_notional, ask_notional)
+
+    if D.equal?(denom, 0),
+      do: nil,
+      else: D.div(D.sub(bid_notional, ask_notional), denom)
+  end
+
+  defp band(bids, asks, mid, pct) do
+    factor = D.div(pct, 100)
+    lower = D.mult(mid, D.sub(1, factor))
+    upper = D.mult(mid, D.add(1, factor))
+    bid_notional = total_within(bids, fn price -> D.compare(price, lower) != :lt end)
+    ask_notional = total_within(asks, fn price -> D.compare(price, upper) != :gt end)
+
+    %{
+      band_pct: pct,
+      bid_notional: bid_notional,
+      ask_notional: ask_notional,
+      imbalance: imbalance(bid_notional, ask_notional)
+    }
+  end
+
+  defp total_within(levels, keep?) do
+    Enum.reduce(levels, D.new(0), fn row, acc ->
+      if keep?.(row.price), do: D.add(acc, D.mult(row.price, row.quantity)), else: acc
+    end)
+  end
 
   defp levels(rows, direction) when is_list(rows) and length(rows) in 1..100 do
     parsed =
@@ -112,6 +153,9 @@ defmodule CryptoDecisionLab.MarketData.Liquidity do
 
   defp levels(_, _), do: {:error, :invalid_order_book}
   defp total(levels), do: Enum.reduce(levels, D.new(0), &D.add(&2, D.mult(&1.price, &1.quantity)))
+
+  defp usec(%DateTime{} = at),
+    do: at |> DateTime.to_unix(:microsecond) |> DateTime.from_unix!(:microsecond)
 
   @doc "Walk an entire requested base quantity; insufficient depth never produces a partial success."
   @spec fill([map()], Decimal.t()) :: {:ok, Decimal.t()} | {:error, atom()}

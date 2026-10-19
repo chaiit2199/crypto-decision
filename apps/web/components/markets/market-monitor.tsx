@@ -23,7 +23,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
     const [error, setError] = useState(initialResult.ok ? null : initialResult.message);
     const [query, setQuery] = useState("");
     const [selectedSymbol, setSelectedSymbol] = useState("BTC");
-    const [quoteAsset, setQuoteAsset] = useState<QuoteAsset>("USD");
+    const [quoteAsset, setQuoteAsset] = useState<QuoteAsset>("USDT");
     const [now, setNow] = useState(initialTime);
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -139,11 +139,11 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
 
             <section className="market-monitor__intro" aria-labelledby="market-title">
                 <div>
-                    <p className="market-monitor__eyebrow">TỔNG QUAN THỊ TRƯỜNG</p>
+                    <p className="market-monitor__eyebrow">BÀN LỆNH NGHIÊN CỨU · BINANCE SPOT</p>
                     <h1 id="market-title">
-                        Nhịp đập thị trường<span>.</span>
+                        Quyết định có kỷ luật<span>.</span>
                     </h1>
-                    <p>Quan sát biến động. Nắm bắt xu hướng.</p>
+                    <p>Checklist trước khi vào. Không hứa lợi nhuận. Không đặt lệnh tự động.</p>
                 </div>
                 <div className="market-monitor__live">
                     <span

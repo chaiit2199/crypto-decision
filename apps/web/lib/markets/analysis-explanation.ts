@@ -16,4 +16,8 @@ export const ANSWER_EXPLANATIONS: Record<string, string> = {
     MIXED: "Các chỉ báo động lượng đưa ra tín hiệu trái chiều.",
     ELEVATED: "Biên độ dao động đang cao; cần thận trọng với biến động bất lợi và kích thước vị thế.",
     NORMAL: "Dữ liệu quan sát chưa cho thấy biến động tăng cao; điều này không bảo đảm rủi ro thấp.",
+    SCALP: "Cấu trúc quan sát nghiêng về giữ ngắn (vài phút). Không phải dự báo lãi scalp.",
+    INTRADAY: "Cấu trúc quan sát nghiêng về giữ trong ngày. Không phải dự báo lãi intraday.",
+    SWING: "Cấu trúc đa khung nghiêng về giữ nhiều ngày. Không phải khuyến nghị đầu tư dài hạn có lãi.",
+    UNSUITABLE: "Thiếu dữ liệu, xung đột khung thời gian hoặc biến động cao — chưa phù hợp mở nghiên cứu giữ lệnh.",
 };

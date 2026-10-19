@@ -46,12 +46,14 @@ const analysisSchema = z.object({
         trend: choiceAnswer(["BULLISH", "BEARISH", "SIDEWAYS"]).optional(),
         momentum: choiceAnswer(["STRENGTHENING", "WEAKENING", "MIXED"]).optional(),
         volatility: choiceAnswer(["ELEVATED", "NORMAL"]).optional(),
+        // Present on hourly-research-v4-horizon+; older ready rows may omit it.
+        holding_horizon: choiceAnswer(["SCALP", "INTRADAY", "SWING", "UNSUITABLE"]).optional(),
     }),
     risk_result: z.object({ execution_allowed: z.literal(false), mode: z.literal("research_only") }),
 }).refine(
     (analysis) => analysis.status !== "ready" ||
         Boolean(analysis.answers.trend && analysis.answers.momentum && analysis.answers.volatility),
-    "Ready analysis must include all answers",
+    "Ready analysis must include core answers",
 );
 
 export type MarketAnalysisData = z.infer<typeof analysisSchema>;

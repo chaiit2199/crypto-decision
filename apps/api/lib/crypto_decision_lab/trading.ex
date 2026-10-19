@@ -195,6 +195,21 @@ defmodule CryptoDecisionLab.Trading do
     liquidity = liquidity(market, now)
     assessment = Assessment.evaluate(market, frames, series, liquidity, now)
 
+    # Horizon uses a fixed research set so style selection cannot hide higher-timeframe gaps.
+    horizon_series =
+      Map.new(["5m", "15m", "1h", "4h", "1d"], fn timeframe ->
+        {timeframe, Map.get_lazy(series, timeframe, fn -> frame(market.id, timeframe, now) end)}
+      end)
+
+    max_atr = assessment["configuration"]["max_atr_percent"] || "5"
+
+    assessment =
+      Map.put(
+        assessment,
+        "horizon_deterministic",
+        Assessment.horizon_from_frames(horizon_series, max_atr)
+      )
+
     Map.merge(assessment, %{
       "symbol" => market.symbol,
       "exchange" => market.exchange,
@@ -282,10 +297,13 @@ defmodule CryptoDecisionLab.Trading do
             "parsed" => book,
             "bid" => Decimal.to_string(book.bid, :normal),
             "ask" => Decimal.to_string(book.ask, :normal),
+            "mid_price" => Decimal.to_string(book.mid_price, :normal),
             "spread_percent" => Decimal.to_string(book.spread_percent, :normal),
+            "spread_bps" => Decimal.to_string(book.spread_bps, :normal),
             "bid_depth" => Decimal.to_string(book.bid_depth, :normal),
             "ask_depth" => Decimal.to_string(book.ask_depth, :normal),
-            "imbalance" => Decimal.to_string(book.imbalance, :normal)
+            "imbalance" => decimal_or_nil(book.imbalance),
+            "bands" => Enum.map(book.bands, &serialize_band/1)
           }
         else
           _ ->
@@ -297,6 +315,18 @@ defmodule CryptoDecisionLab.Trading do
         end
     end
   end
+
+  defp serialize_band(band) do
+    %{
+      "band_pct" => band.band_pct,
+      "bid_notional" => Decimal.to_string(band.bid_notional, :normal),
+      "ask_notional" => Decimal.to_string(band.ask_notional, :normal),
+      "imbalance" => decimal_or_nil(band.imbalance)
+    }
+  end
+
+  defp decimal_or_nil(nil), do: nil
+  defp decimal_or_nil(value), do: Decimal.to_string(value, :normal)
 
   defp knowledge_matches(%{exchange: exchange}, _) when exchange != "binance", do: []
 

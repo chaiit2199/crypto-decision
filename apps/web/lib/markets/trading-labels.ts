@@ -4,6 +4,25 @@ export const TRADING_STYLE_LABELS = {
     swing: "Swing · Nhiều ngày",
 };
 
+export const ELIGIBILITY_LABELS: Record<string, string> = {
+    NO_DATA: "Chưa đủ dữ liệu đánh giá",
+    WAIT: "Chờ xác nhận · chưa đủ điều kiện",
+    RESEARCH_CANDIDATE: "Ứng viên nghiên cứu · Chưa kiểm chứng",
+};
+
+export const SETUP_LABELS: Record<string, string> = {
+    BREAKOUT: "Breakout",
+    RETEST: "Retest",
+    PULLBACK: "Pullback",
+};
+
+export const HOLDING_HORIZON_LABELS: Record<string, string> = {
+    SCALP: "Scalp · Vài phút",
+    INTRADAY: "Intraday · Trong ngày",
+    SWING: "Swing · Nhiều ngày",
+    UNSUITABLE: "Chưa phù hợp giữ lệnh",
+};
+
 export const RISK_FLAG_LABELS: Record<string, string> = {
     MARKET_UNAVAILABLE: "Thị trường không khả dụng",
     TIMEFRAME_DATA_MISSING: "Thiếu nến liên tiếp hoặc nến đã cũ",

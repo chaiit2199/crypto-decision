@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 
 import type { TradingResult, TradingStyle, WorkbenchData } from "@/lib/api/trading-types";
 import { formatIndicator } from "@/lib/format/market";
-import { REGIME_LABELS, RISK_FLAG_LABELS, TRADING_STYLE_LABELS } from "@/lib/markets/trading-labels";
+import {
+    ELIGIBILITY_LABELS,
+    REGIME_LABELS,
+    RISK_FLAG_LABELS,
+    TRADING_STYLE_LABELS,
+} from "@/lib/markets/trading-labels";
 
 type OpportunityScannerProps = { exchange: string; now: number; refreshVersion: number };
 
@@ -92,8 +97,17 @@ export function OpportunityScanner({ exchange, now, refreshVersion }: Opportunit
                                     <td>{formatIndicator(row.frames[row.timeframes.entry]?.features.relative_volume20)}</td>
                                     <td>{row.plan ? `1 : ${formatIndicator(row.plan.risk_reward_ratio)}` : "Chưa tính"}</td>
                                     <td>
-                                        <p>{error || now >= Date.parse(row.valid_until) ? "Dữ liệu cũ" : "Chờ xác nhận / kiểm chứng"}</p>
-                                        <small>{row.risk_flags.map((flag) => RISK_FLAG_LABELS[flag] ?? flag).join(" · ")}</small>
+                                        <p>
+                                            {error || now >= Date.parse(row.valid_until)
+                                                ? "Dữ liệu cũ"
+                                                : ELIGIBILITY_LABELS[row.trade_eligibility]}
+                                        </p>
+                                        <small>
+                                            {(row.missing_requirements?.length
+                                                ? row.missing_requirements
+                                                : row.risk_flags
+                                            ).map((flag) => RISK_FLAG_LABELS[flag] ?? flag).join(" · ")}
+                                        </small>
                                     </td>
                                 </tr>
                             ))}

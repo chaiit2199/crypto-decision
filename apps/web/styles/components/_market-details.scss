@@ -10,7 +10,21 @@
         grid-template-columns: minmax(0, 1fr);
 
         @media (min-width: 1200px) {
-            grid-template-columns: minmax(0, 1fr) 350px;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+        }
+    }
+
+    &__analysis {
+        @apply border-t p-4;
+        border-color: var(--border);
+
+        @media (min-width: 1200px) {
+            @apply border-t-0 border-l;
+        }
+
+        > summary {
+            @apply cursor-pointer text-sm font-medium;
+            color: var(--muted);
         }
     }
 

@@ -23,11 +23,24 @@ export const planSchema = z.object({
     risk_reward_ratio: decimal,
     execution_allowed: z.literal(false),
     cost_model: z.literal("constant-notional-v1"),
+    entry_min: decimal.optional(),
+    entry_max: decimal.optional(),
+    take_profit_1: decimal.optional(),
+    take_profit_2: decimal.optional(),
+    take_profit_3: decimal.optional(),
+    basis: z.string().optional(),
 });
 export type TradePlan = z.infer<typeof planSchema>;
 export type PlanInput = Pick<TradePlan,
     "equity" | "risk_percent" | "entry" | "stop_loss" | "take_profit" | "fee_percent" | "slippage_percent"
 >;
+
+const depthBandSchema = z.object({
+    band_pct: z.string(),
+    bid_notional: decimal,
+    ask_notional: decimal,
+    imbalance: decimal.nullable(),
+});
 
 export const workbenchSchema = z.object({
     symbol: z.string(),
@@ -70,10 +83,13 @@ export const workbenchSchema = z.object({
         fetched_at: timestamp.optional(),
         bid: decimal.optional(),
         ask: decimal.optional(),
+        mid_price: decimal.optional(),
         spread_percent: decimal.optional(),
+        spread_bps: decimal.optional(),
         bid_depth: decimal.optional(),
         ask_depth: decimal.optional(),
-        imbalance: decimal.optional(),
+        imbalance: decimal.nullable().optional(),
+        bands: z.array(depthBandSchema).optional(),
     }),
     market_regime: z.enum(["BULLISH", "BEARISH", "RANGING_OR_MIXED", "UNKNOWN"]),
     setup: z.string().nullable(),
@@ -81,12 +97,15 @@ export const workbenchSchema = z.object({
     ai_signal: z.enum(["BUY_CANDIDATE", "EXIT_CANDIDATE", "WAIT", "NO_DATA"]),
     ai_analyzed_at: timestamp.nullable(),
     direction_assessment: z.string().nullable(),
+    holding_horizon: z.enum(["SCALP", "INTRADAY", "SWING", "UNSUITABLE"]).nullable().optional(),
+    horizon_deterministic: z.enum(["SCALP", "INTRADAY", "SWING", "UNSUITABLE"]).optional(),
     uncertainty: z.literal("UNCALIBRATED"),
     expected_move: z.null(),
     profit_probability: z.null(),
     strategy_validation: z.literal("UNVALIDATED"),
     execution_allowed: z.literal(false),
-    trade_eligibility: z.enum(["WAIT_CONFIRMATION", "NO_DATA"]),
+    trade_eligibility: z.enum(["NO_DATA", "WAIT", "RESEARCH_CANDIDATE"]),
+    missing_requirements: z.array(z.string()).default([]),
     technical_candidate: z.boolean(),
     risk_flags: z.array(z.string()),
     plan: planSchema.nullable(),

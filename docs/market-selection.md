@@ -18,29 +18,25 @@ Sau khi chỉnh danh sách, từ `apps/api`, seed mà không khởi động coll
 MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix run priv/repo/seeds.exs
 ```
 
-Khởi động lại backend để bootstrap metadata/backfill. Không seed một mã `XAU` rồi coi giá đó là vàng thế giới: cần nguồn XAU/USD riêng.
+`Universe.seed/0` upsert tên/nhóm cho mã còn trong `@groups`, và đặt `enabled=false` cho mọi asset đã bị gỡ khỏi danh mục. Lịch sử nến/phân tích được giữ. Preference `enabled` của mã vẫn còn trong `@groups` được giữ nguyên. Khởi động lại backend để bootstrap metadata/backfill. Không seed một mã `XAU` rồi coi giá đó là vàng thế giới: cần nguồn XAU/USD riêng.
 
 ## Bỏ hoặc bật lại mã đã seed
 
-Seed dùng `on_conflict: :nothing` để giữ lựa chọn đã lưu. Xóa tuple khỏi `@groups` **không xóa/tắt** asset đã có trong DB. Không xóa dữ liệu giá/nến/lịch sử phân tích để bỏ theo dõi.
-
-Từ `apps/api`, mở console không bật lịch nền:
+Xóa tuple khỏi `@groups` rồi chạy seed sẽ tắt asset đó. Muốn tắt tạm một mã vẫn còn trong danh mục:
 
 ```sh
 MARKET_SYNC_ENABLED=false JEV_ENABLED=false iex -S mix
 ```
 
-Ví dụ tắt MEW (thay mã theo nhu cầu):
-
 ```elixir
 alias CryptoDecisionLab.Repo
 alias CryptoDecisionLab.MarketData.Asset
 
-asset = Repo.get_by!(Asset, symbol: "MEW")
+asset = Repo.get_by!(Asset, symbol: "BONK")
 asset |> Ecto.Changeset.change(enabled: false) |> Repo.update!()
 ```
 
-Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset đã tắt; dashboard vẫn giữ hàng với trạng thái “Đã tắt” để truy vết. Các test mặc định đang kiểm tra danh mục gốc 32 mã, cần cập nhật kỳ vọng khi thay danh mục mặc định.
+Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset đã tắt; dashboard vẫn giữ hàng với trạng thái “Đã tắt” để truy vết.
 
 ## Chẩn đoán USD không đồng bộ trên production
 

@@ -19,29 +19,41 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
     F.configure()
   end
 
-  test "seeds exactly 32 distinct assets idempotently and preserves preferences" do
+  test "seeds the configured universe idempotently, disables removed assets, and preserves preferences" do
     Universe.seed()
+    assert length(Universe.assets()) == 21
+    assert Repo.aggregate(Asset, :count) == 21
     asset = Repo.get_by!(Asset, symbol: "BTC")
     Repo.update!(Ecto.Changeset.change(asset, enabled: false))
+    # Legacy row no longer in @groups must be disabled on the next seed.
+    Repo.insert!(%Asset{
+      symbol: "ETH",
+      name: "Ethereum",
+      category: "core",
+      enabled: true
+    })
+
     Universe.seed()
-    assert Repo.aggregate(Asset, :count) == 32
+    assert Repo.aggregate(Asset, :count) == 22
     refute Repo.get!(Asset, asset.id).enabled
+    refute Repo.get_by!(Asset, symbol: "ETH").enabled
+    assert Repo.get_by!(Asset, symbol: "ARB").enabled
   end
 
   test "discovers actual spot symbols without inventing unavailable pairs" do
-    F.queue([F.response(F.exchange(["BTC", "ETH"]))])
+    F.queue([F.response(F.exchange(["BTC", "ARB"]))])
     assert {:ok, 2} = Sync.metadata()
-    assert Repo.aggregate(Asset, :count) == 32
+    assert Repo.aggregate(from(a in Asset, where: a.enabled), :count) == 21
     assert Repo.aggregate(Symbol, :count) == 2
     refute Repo.get_by(Symbol, symbol: "KASUSDT")
     F.queue([F.response(F.exchange(["BTC"]))])
     assert {:ok, 1} = Sync.metadata()
-    assert Repo.get_by!(Symbol, symbol: "ETHUSDT").trading_status == "UNAVAILABLE"
+    assert Repo.get_by!(Symbol, symbol: "ARBUSDT").trading_status == "UNAVAILABLE"
   end
 
   test "keeps valid partial prices and reports the missing response" do
     btc = F.symbol()
-    F.symbol("ETH")
+    F.symbol("ARB")
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "0.1234567890123456789"}])])
     assert {:error, :partial_response} = Sync.prices()
     assert Decimal.equal?(Repo.get!(LatestPrice, btc.id).price, "0.1234567890123456789")
@@ -147,7 +159,7 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
       end
     )
 
-    assert {:ok, 32} = Sync.stats()
+    assert {:ok, 21} = Sync.stats()
     assert length(Process.get(:http_calls)) == 2
   end
 
@@ -164,17 +176,20 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
              Postgrex.query!(connection, "SELECT pg_try_advisory_lock(7413201)", [])
   end
 
-  test "price polling waits for the configured two-minute interval" do
+  test "price polling waits for the configured poll interval" do
+    interval_s = div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000)
     F.symbol()
     F.queue([F.response([%{"symbol" => "BTCUSDT", "price" => "100"}])])
     assert {:ok, 1} = Sync.poll()
-    Process.put(:now, DateTime.add(F.now(), 60))
+    Process.put(:now, DateTime.add(F.now(), max(div(interval_s, 2), 1)))
     assert {:ok, :not_due} = Sync.poll()
-    Process.put(:now, DateTime.add(F.now(), 120))
+    Process.put(:now, DateTime.add(F.now(), interval_s))
 
     F.queue([
       F.response([%{"symbol" => "BTCUSDT", "price" => "101"}], 200, %{
-        "date" => [Calendar.strftime(DateTime.add(F.now(), 120), "%a, %d %b %Y %H:%M:%S GMT")]
+        "date" => [
+          Calendar.strftime(DateTime.add(F.now(), interval_s), "%a, %d %b %Y %H:%M:%S GMT")
+        ]
       })
     ])
 

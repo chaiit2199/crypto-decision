@@ -86,6 +86,67 @@ defmodule CryptoDecisionLab.Trading.WorkbenchTest do
     refute p["execution_allowed"]
   end
 
+  test "deterministic holding horizon prefers shorter styles when higher frames are missing" do
+    missing = %{"status" => "no_data", "reason" => "insufficient_candles", "features" => %{}}
+
+    bullish = fn atr ->
+      %{
+        "status" => "ready",
+        "reason" => nil,
+        "features" => %{
+          "ema20" => "103",
+          "ema50" => "102",
+          "ema200" => "100",
+          "atr_percent" => atr
+        }
+      }
+    end
+
+    assert Assessment.horizon_from_frames(
+             %{
+               "5m" => bullish.("1"),
+               "15m" => bullish.("1"),
+               "1h" => missing,
+               "4h" => missing,
+               "1d" => missing
+             },
+             "5"
+           ) == "SCALP"
+
+    assert Assessment.horizon_from_frames(
+             %{
+               "5m" => bullish.("1"),
+               "15m" => bullish.("1"),
+               "1h" => bullish.("1"),
+               "4h" => bullish.("1"),
+               "1d" => missing
+             },
+             "5"
+           ) == "INTRADAY"
+
+    assert Assessment.horizon_from_frames(
+             %{
+               "5m" => bullish.("1"),
+               "15m" => bullish.("1"),
+               "1h" => bullish.("1"),
+               "4h" => bullish.("1"),
+               "1d" => bullish.("1")
+             },
+             "5"
+           ) == "SWING"
+
+    assert Assessment.horizon_from_frames(
+             %{
+               "5m" => bullish.("9"),
+               "15m" => bullish.("1"),
+               "1h" => bullish.("1"),
+               "4h" => bullish.("1"),
+               "1d" => bullish.("1")
+             },
+             "5"
+           ) == "UNSUITABLE"
+  end
+
   test "invalid numbers, ordering and unsafe risk inputs fail closed" do
     for {key, value} <- [
           {"entry", "NaN"},
@@ -116,9 +177,16 @@ defmodule CryptoDecisionLab.Trading.WorkbenchTest do
   test "depth is sorted, uncrossed, finite and requires a full fill" do
     assert {:ok, parsed} = Liquidity.parse(book())
     assert D.positive?(parsed.spread_percent)
+    assert D.positive?(parsed.spread_bps)
+    assert D.equal?(parsed.mid_price, "99.995")
+    assert length(parsed.bands) == 4
+    assert hd(parsed.bands).band_pct == "0.1"
+    assert D.positive?(hd(parsed.bands).bid_notional)
+    assert is_struct(parsed.imbalance, D)
     assert {:ok, avg} = Liquidity.fill(parsed.asks, D.new(1500))
     assert D.compare(avg, 100) == :gt
     assert {:error, :insufficient_depth} = Liquidity.fill(parsed.asks, D.new(2001))
+    assert Liquidity.imbalance(D.new(0), D.new(0)) == nil
 
     for bad <- [
           Map.put(book(), "bids", [["101", "1"]]),
@@ -275,9 +343,19 @@ defmodule CryptoDecisionLab.Trading.WorkbenchTest do
     assert {:ok, report, _} = Trading.workbench(symbol.symbol, %{"style" => "scalping"})
     assert report["frames"]["5m"]["status"] == "ready"
     assert report["liquidity"]["status"] == "fresh"
+    assert report["liquidity"]["spread_bps"] != nil
+    assert length(report["liquidity"]["bands"]) == 4
     assert report["plan"] != nil
+    assert report["plan"]["take_profit_1"] != nil
+    assert report["plan"]["take_profit_2"] == report["plan"]["take_profit"]
+    assert report["plan"]["take_profit_3"] != nil
+    assert report["plan"]["entry_min"] != nil
+    assert report["trade_eligibility"] in ["WAIT", "RESEARCH_CANDIDATE", "NO_DATA"]
+    assert is_list(report["missing_requirements"])
     assert "STRATEGY_UNVALIDATED" in report["risk_flags"]
-    other = MarketFixtures.symbol("ETH")
+    refute report["execution_allowed"]
+    assert report["profit_probability"] == nil
+    other = MarketFixtures.symbol("ARB")
     assert {:ok, report, _} = Trading.workbench(other.symbol, %{})
     assert report["liquidity"]["status"] == "missing"
     Repo.update_all(LiquiditySnapshot, set: [fetched_at: DateTime.add(MarketFixtures.now(), -91)])

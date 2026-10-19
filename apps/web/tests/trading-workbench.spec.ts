@@ -67,6 +67,8 @@ test("workbench explains missing data and sends the selected market's hypothetic
             ai_signal: "NO_DATA",
             ai_analyzed_at: null,
             direction_assessment: null,
+            holding_horizon: null,
+            horizon_deterministic: "UNSUITABLE",
             uncertainty: "UNCALIBRATED",
             expected_move: null,
             profit_probability: null,
@@ -74,6 +76,7 @@ test("workbench explains missing data and sends the selected market's hypothetic
             execution_allowed: false,
             trade_eligibility: "NO_DATA",
             technical_candidate: false,
+            missing_requirements: ["LIQUIDITY_MISSING", "ENTRY_NOT_CONFIRMED"],
             risk_flags: ["LIQUIDITY_MISSING", "ENTRY_NOT_CONFIRMED", "STRATEGY_UNVALIDATED"],
             plan: null,
             depth_estimate: null,
@@ -88,12 +91,11 @@ test("workbench explains missing data and sends the selected market's hypothetic
         await route.fulfill({ status: 400, json: { ok: false, message: "Synthetic: dừng lỗ phải thấp hơn giá vào" } });
     });
     await page.goto("/");
-    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
     const workbench = page.getByRole("region", { name: "Nghiên cứu cơ hội giao dịch", exact: true });
     await expect(workbench).toContainText("Chưa đồng bộ sổ lệnh");
     await expect(workbench).toContainText("Chưa đủ dữ liệu đánh giá");
-    await workbench.getByText("Điều kiện giao dịch & dữ liệu chi tiết", { exact: true }).click();
-    await expect(workbench.getByText("Chưa đồng bộ sổ lệnh.", { exact: true })).toBeVisible();
+    await expect(workbench.getByRole("region", { name: "Phiếu lệnh nghiên cứu" })).toContainText("Thiếu điều kiện");
+    await expect(workbench).toContainText("Chưa phù hợp giữ lệnh");
     await page.getByLabel("Phong cách nghiên cứu").selectOption("scalping");
     await expect(page.getByRole("button", { name: "5M", exact: true })).toBeVisible();
     const planner = page.getByRole("region", { name: "Mô phỏng quản trị lệnh", exact: true });
@@ -156,9 +158,11 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
             liquidity: { status: "unsupported", reason: "LIQUIDITY_SOURCE_UNSUPPORTED" },
             market_regime: "UNKNOWN", setup: null, setup_quality: "UNCONFIRMED",
             ai_signal: "NO_DATA", ai_analyzed_at: null, direction_assessment: null,
+            holding_horizon: null, horizon_deterministic: "UNSUITABLE",
             uncertainty: "UNCALIBRATED", expected_move: null, profit_probability: null,
             strategy_validation: "UNVALIDATED", execution_allowed: false,
             trade_eligibility: "NO_DATA", technical_candidate: false,
+            missing_requirements: ["TIMEFRAME_DATA_MISSING"],
             risk_flags: ["TIMEFRAME_DATA_MISSING"], plan: null, depth_estimate: null,
             knowledge_matches: [], simulations: [],
         };
@@ -176,6 +180,9 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
     });
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USD");
+    const workbench = page.getByRole("region", { name: "Nghiên cứu cơ hội giao dịch", exact: true });
+    await workbench.getByText("Chỉ báo khung thời gian & lịch sử mô phỏng", { exact: true }).click();
     const indicators = page.getByRole("region", { name: "Chỉ báo kỹ thuật theo khung", exact: true });
     await expect(indicators.getByLabel("Khung chỉ báo")).toHaveValue("1h");
     await expect(indicators.getByText("58.5", { exact: true })).toBeVisible();

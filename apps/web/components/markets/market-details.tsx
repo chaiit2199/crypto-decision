@@ -81,6 +81,14 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
             </dl>
             {statsStale && <p className="market-chart__notice">Thống kê 24h đã cũ; đang chờ lần đồng bộ tiếp theo.</p>}
             {!stats && <p className="market-details__hint">Chưa có thống kê 24h.</p>}
+            {market && market.exchange !== "gold_api" && (
+                <TradingWorkbench
+                    key={`${market.exchange}:${market.symbol}`}
+                    market={market}
+                    now={now}
+                    refreshVersion={refreshVersion}
+                />
+            )}
             <div className="market-details__workspace">
                 <div className="market-details__history">
                     {market?.exchange === "gold_api" && (
@@ -118,16 +126,11 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
                         <p className="market-chart__empty">Chưa có thị trường khả dụng để tải lịch sử của {asset.symbol}.</p>
                     )}
                 </div>
-                <MarketAnalysis market={market} now={now} />
+                <details className="market-details__analysis">
+                    <summary>Phân tích Jev 1H (bối cảnh · không phải tín hiệu vào lệnh)</summary>
+                    <MarketAnalysis market={market} now={now} />
+                </details>
             </div>
-            {market && market.exchange !== "gold_api" && (
-                <TradingWorkbench
-                    key={`${market.exchange}:${market.symbol}`}
-                    market={market}
-                    now={now}
-                    refreshVersion={refreshVersion}
-                />
-            )}
         </section>
     );
 }

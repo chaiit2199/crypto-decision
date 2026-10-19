@@ -10,8 +10,8 @@ defmodule CryptoDecisionLabWeb.MarketControllerTest do
   test "market index includes unsupported assets with explicit missing data", %{conn: conn} do
     Universe.seed()
     body = conn |> get("/api/markets") |> json_response(200)
-    assert length(body["data"]) == 32
-    assert body["meta"]["total"] == 32
+    assert length(body["data"]) == 21
+    assert body["meta"]["total"] == 21
     assert Enum.all?(body["data"], &(&1["availability"] == "unavailable"))
   end
 
