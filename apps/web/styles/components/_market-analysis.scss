@@ -1,7 +1,26 @@
 .market-analysis {
-    @apply mx-6 mt-6 rounded-lg border p-4;
-    border-color: var(--border);
-    background: var(--background);
+    @apply p-6;
+    min-width: 0;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 45%, var(--surface));
+
+    @media (min-width: 1200px) {
+        border-top: 0;
+        border-left: 1px solid var(--border);
+    }
+
+    &__indicators {
+        @apply mt-4 border-y py-3;
+        border-color: var(--border);
+
+        summary {
+            @apply text-sm;
+        }
+        summary > span {
+            @apply ml-2 text-xs;
+            color: var(--muted);
+        }
+    }
 
     &__header {
         @apply flex flex-wrap items-center justify-between gap-2;
@@ -75,12 +94,12 @@
     &__features {
         @apply my-4 grid gap-3;
 
-        @media (min-width: 640px) {
+        @media (min-width: 640px) and (max-width: 1199px) {
             @apply grid-cols-3;
         }
     }
 
     @media (max-width: 640px) {
-        @apply mx-4;
+        @apply p-4;
     }
 }

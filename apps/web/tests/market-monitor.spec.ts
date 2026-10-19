@@ -258,7 +258,8 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
     await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
     const panel = page.getByRole("region", { name: "Phân tích Jev" });
     await expect(panel).toContainText("Đang chờ lần phân tích Jev đầu tiên");
-    await expect(panel).toContainText("Mỗi 15 phút · Chỉ báo 1H");
+    await expect(panel).toContainText("Chỉ báo 1H");
+    await expect(panel).not.toContainText("Mỗi 15 phút");
     analysis = {
         id: 1,
         status: "ready",
@@ -540,4 +541,69 @@ test("empty/error candle responses are visible and a delayed old selection canno
         page.getByRole("heading", { name: "ETH Fixture ETH" }),
     ).toBeVisible();
     await expect(page.locator(".market-chart__canvas")).toHaveCount(0);
+});
+
+
+test("polling follows backend cadence and manual refresh also reloads candles", async ({ page }) => {
+    const monitor = fixtureMonitor();
+    monitor.data.status.price_poll_interval_seconds = 30;
+    let monitorRequests = 0;
+    let candleRequests = 0;
+    await page.clock.install();
+    await page.route("**/api/market-monitor", (route) => {
+        monitorRequests += 1;
+        return route.fulfill({ json: monitor });
+    });
+    await page.route("**/api/market-candles?**", (route) => {
+        candleRequests += 1;
+        return route.fulfill({ json: fixtureCandles() });
+    });
+    await page.goto("/");
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
+    await expect(page.locator(".market-chart__canvas")).toBeVisible();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    const initialRequests = monitorRequests;
+    await page.clock.runFor(20_000);
+    expect(monitorRequests).toBe(initialRequests);
+    await page.clock.runFor(10_000);
+    await expect.poll(() => monitorRequests).toBe(initialRequests + 1);
+    await expect.poll(() => candleRequests).toBeGreaterThan(1);
+    await expect(page.locator(".market-monitor__live")).not.toContainText("mỗi");
+
+    const previousCandles = candleRequests;
+    await page.getByRole("button", { name: "Làm mới", exact: true }).click();
+    await page.clock.runFor(1);
+    await expect.poll(() => candleRequests).toBeGreaterThan(previousCandles);
+    await expect.poll(() => monitorRequests).toBe(initialRequests + 2);
+});
+
+test("freshness expires without fetching and an API error preserves the last snapshot", async ({ page }) => {
+    const monitor = fixtureMonitor();
+    monitor.data.assets[0].markets[0].price_max_age_seconds = 2;
+    let fail = false;
+    let requests = 0;
+    await page.clock.install();
+    await page.route("**/api/market-monitor", (route) => {
+        requests += 1;
+        return route.fulfill({
+            json: fail ? { ok: false, checked_at: Date.now(), message: "Fixture: API unavailable" } : monitor,
+        });
+    });
+    await page.route("**/api/market-candles?**", (route) => route.fulfill({ json: fixtureCandles() }));
+    await page.goto("/");
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
+    const row = page.locator(".market-row").filter({
+        has: page.getByRole("button", { name: "Xem chi tiết BTC", exact: true }),
+    });
+    await expect(row.locator(".price-flash")).toHaveText("100");
+    const initialRequests = requests;
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await page.clock.runFor(3000);
+    await expect(row.locator(".market-row__status")).toHaveText("Dữ liệu cũ");
+    expect(requests).toBe(initialRequests);
+    fail = true;
+    await page.getByRole("button", { name: "Làm mới", exact: true }).click();
+    await page.clock.runFor(1);
+    await expect(page.getByRole("alert")).toContainText("Fixture: API unavailable");
+    await expect(row.locator(".price-flash")).toHaveText("100");
 });

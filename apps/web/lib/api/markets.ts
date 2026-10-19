@@ -55,7 +55,7 @@ export async function getMarketMonitor(): Promise<MarketMonitorResult> {
         return {
             checked_at,
             ok: false,
-            message: "Không kết nối được API. Trang sẽ tự thử lại sau 5 phút.",
+            message: "Không kết nối được API. Trang sẽ tự kết nối lại.",
         };
     }
 }

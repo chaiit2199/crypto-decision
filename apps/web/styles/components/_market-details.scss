@@ -4,6 +4,20 @@
     background: var(--surface);
     scroll-margin-top: 24px;
 
+    &__workspace {
+        @apply grid;
+        border-top: 1px solid var(--border);
+        grid-template-columns: minmax(0, 1fr);
+
+        @media (min-width: 1200px) {
+            grid-template-columns: minmax(0, 1fr) 350px;
+        }
+    }
+
+    &__history {
+        min-width: 0;
+    }
+
     &__header {
         @apply flex flex-wrap items-center justify-between gap-5 p-6;
     }
@@ -33,7 +47,7 @@
     }
 
     &__quote strong {
-        @apply text-3xl font-medium;
+        @apply text-3xl font-semibold tracking-tight;
     }
 
     &__quote > span,
@@ -47,11 +61,11 @@
     }
 
     &__quote[data-freshness="stale"] strong {
-        color: var(--accent);
+        color: var(--warning);
     }
 
     &__stats {
-        @apply mx-6 grid grid-cols-2 gap-5 border-y py-5;
+        @apply mx-6 grid grid-cols-2 gap-5 border-t py-5;
         border-color: var(--border);
     }
 
@@ -63,6 +77,14 @@
     dd {
         @apply break-words text-sm font-medium;
         font-variant-numeric: tabular-nums;
+    }
+
+    dd[data-direction="up"] {
+        color: var(--positive);
+    }
+
+    dd[data-direction="down"] {
+        color: var(--negative);
     }
 
     &__chart-header {
@@ -89,8 +111,8 @@
     }
 
     &__timeframes button[aria-pressed="true"] {
-        background: var(--raised);
-        color: var(--accent);
+        background: var(--accent);
+        color: var(--background);
     }
 
     @media (min-width: 768px) {
@@ -101,7 +123,15 @@
 
     @media (max-width: 640px) {
         &__header,
-        &__chart-header {
+        dd[data-direction="up"] {
+        color: var(--positive);
+    }
+
+    dd[data-direction="down"] {
+        color: var(--negative);
+    }
+
+    &__chart-header {
             @apply p-4;
         }
 
@@ -117,7 +147,7 @@
 
 .market-chart {
     &__canvas {
-        height: 390px;
+        height: 410px;
         width: 100%;
     }
 

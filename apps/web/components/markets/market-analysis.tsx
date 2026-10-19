@@ -65,7 +65,6 @@ const REASON_LABELS: Record<string, string> = {
 
 export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
     const analysis = market?.analysis;
-    const intervalMinutes = market ? market.analysis_interval_seconds / 60 : null;
     const stale = analysis && (analysis.freshness === "stale" || now >= Date.parse(analysis.valid_until));
     const active = Boolean(market?.analysis_enabled && !stale && analysis?.status === "ready");
     const signal = active && analysis ? analysis.signal : "WAIT";
@@ -78,7 +77,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
     } else if (!market.analysis_enabled) {
         notice = "Phân tích Jev đang tắt.";
     } else if (!analysis) {
-        notice = `Đang chờ lần phân tích Jev đầu tiên; lịch chạy mỗi ${intervalMinutes} phút.`;
+        notice = "Đang chờ lần phân tích Jev đầu tiên.";
     } else if (analysis.status !== "ready") {
         notice = REASON_LABELS[analysis.reason ?? ""] ?? "Chưa có kết quả phân tích khả dụng.";
     }
@@ -87,7 +86,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
         <section className="market-analysis" aria-label="Phân tích Jev">
             <header className="market-analysis__header">
                 <h3>Phân tích Jev · {market?.symbol ?? "Chưa có thị trường"}</h3>
-                <span>{intervalMinutes === null ? "Chỉ báo 1H" : `Mỗi ${intervalMinutes} phút · Chỉ báo 1H`}</span>
+                <span>Chỉ báo 1H</span>
             </header>
             {notice && <p className="market-analysis__notice" role="status">{notice}</p>}
             {analysis && (
@@ -114,8 +113,10 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                 </>
             )}
             {analysis?.features.rsi14 !== undefined && (
-                <>
-                    <p className="market-analysis__time">Chỉ báo từ nến 1H đã đóng · Đơn vị giá: {market?.quote_asset}</p>
+                <details className="market-analysis__indicators">
+                    <summary>
+                        Chỉ báo kỹ thuật <span>{market?.quote_asset} · 1H</span>
+                    </summary>
                     <dl className="market-analysis__features">
                         {INDICATORS.map(({ key, name, description }) => (
                             <div key={key}>
@@ -127,7 +128,7 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                             </div>
                         ))}
                     </dl>
-                </>
+                </details>
             )}
             {analysis?.features.last_close_time && (
                 <p className="market-analysis__time">
@@ -136,10 +137,8 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                 </p>
             )}
             <p className="market-analysis__caption">
-                Nhận định dựa trên trạng thái thị trường hiện tại, không bảo đảm hướng giá tương lai.
-                Diễn giải tiếng Việt được tạo theo quy tắc từ nhãn Jev và các chỉ báo đã tính.
-                Tín hiệu nghiên cứu, chưa kiểm chứng bằng backtest. Độ tin cậy mô hình không phải xác suất có lãi.
-                SELL thể hiện áp lực bán, không phải lệnh mở short. Ứng dụng không đặt lệnh.
+                Tín hiệu nghiên cứu, chưa kiểm chứng bằng backtest.
+                Độ tin cậy mô hình không phải xác suất có lãi.
             </p>
         </section>
     );

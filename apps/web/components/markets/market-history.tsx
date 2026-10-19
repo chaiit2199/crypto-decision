@@ -14,9 +14,18 @@ type MarketHistoryProps = {
     exchange: string;
     timeframe: Timeframe;
     snapshotPrice: string | undefined;
+    refreshIntervalMs: number;
+    refreshVersion: number;
 };
 
-export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: MarketHistoryProps) {
+export function MarketHistory({
+    symbol,
+    exchange,
+    timeframe,
+    snapshotPrice,
+    refreshIntervalMs,
+    refreshVersion,
+}: MarketHistoryProps) {
     const [data, setData] = useState<CandlesData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [retry, setRetry] = useState(0);
@@ -39,7 +48,7 @@ export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: Ma
                 setError(result.message);
             }
 
-            timer = setTimeout(refresh, 300_000);
+            timer = setTimeout(refresh, refreshIntervalMs);
         }
 
         timer = setTimeout(refresh, 0);
@@ -47,7 +56,7 @@ export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: Ma
             clearTimeout(timer);
             controller.abort();
         };
-    }, [symbol, exchange, timeframe, retry]);
+    }, [symbol, exchange, timeframe, retry, refreshIntervalMs, refreshVersion]);
 
     function handleRetry() {
         setError(null);
@@ -78,7 +87,7 @@ export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: Ma
                 <>
                     <div className="market-chart__summary">
                         <span>
-                            Nến đã đóng gần nhất, mở lúc · {lastCandle && formatChartTime(lastCandle.open_time)} (UTC+7)
+                            Nến gần nhất · {lastCandle && formatChartTime(lastCandle.open_time)} (UTC+7)
                         </span>
                         <span>O {formatDecimal(lastCandle?.open)}</span>
                         <span>H {formatDecimal(lastCandle?.high)}</span>
@@ -97,7 +106,6 @@ export function MarketHistory({ symbol, exchange, timeframe, snapshotPrice }: Ma
                 <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">
                     TradingView Lightweight Charts™
                 </a>
-                {" · "}Nến đọc lại mỗi 60 giây; đường Snapshot theo giá mới nhất.
             </p>
         </div>
     );

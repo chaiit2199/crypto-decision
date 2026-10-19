@@ -1,9 +1,9 @@
 .market-monitor {
     @apply mx-auto px-5;
-    max-width: 1440px;
+    max-width: 1600px;
 
     &__header {
-        @apply flex items-center justify-between py-7;
+        @apply flex items-center justify-between py-5;
         border-bottom: 1px solid var(--border);
     }
 
@@ -14,9 +14,10 @@
 
     &__logo {
         @apply flex h-10 w-10 items-center justify-center text-xl;
-        border: 1px solid var(--accent);
         border-radius: 12px;
-        color: var(--accent);
+        color: var(--background);
+        background: var(--accent);
+        box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 12%, transparent);
         span {
             @apply -ml-1 text-xs;
         }
@@ -26,19 +27,27 @@
         @apply block text-[9px] tracking-[0.2em];
         color: var(--muted);
     }
-    &__environment {
-        @apply text-[10px] tracking-[0.18em];
+    &__nav {
+        @apply flex items-center gap-6 rounded-full px-4 py-2 text-xs;
+        border: 1px solid var(--border);
         color: var(--muted);
+        transition: color 160ms, border-color 160ms;
+
+        &:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
     }
     &__intro {
-        @apply flex flex-wrap items-end justify-between gap-6 py-10;
+        @apply flex flex-wrap items-center justify-between gap-6 py-9;
     }
     &__eyebrow {
         @apply mb-3 text-[10px] font-bold tracking-[0.2em];
         color: var(--accent);
     }
     &__intro h1 {
-        @apply mb-3 text-5xl font-semibold tracking-tight;
+        @apply mb-3 text-4xl font-semibold tracking-tight;
+        line-height: 1.2;
         span {
             color: var(--accent);
         }
@@ -52,7 +61,9 @@
         color: var(--muted);
     }
     &__connection {
-        @apply flex items-center gap-2 text-sm;
+        @apply flex items-center gap-2 rounded-full px-3 py-2 text-xs;
+        border: 1px solid var(--border);
+        background: var(--surface);
         color: var(--accent);
     }
     &__connection > span {
@@ -64,18 +75,40 @@
     }
     &__notice {
         @apply mb-4 rounded-lg px-4 py-3 text-sm;
-        background: #30251d;
-        color: var(--accent);
+        background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+        border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
+        color: var(--warning);
     }
 
     &__metrics {
         @apply mb-8 grid gap-4;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
 
         article {
             @apply rounded-xl p-6;
             border: 1px solid var(--border);
-            background: var(--surface);
+            background: linear-gradient(135deg, var(--raised), var(--surface) 65%);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 180ms, transform 180ms;
+
+            &:hover {
+                border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+                transform: translateY(-2px);
+            }
+        }
+        article[data-tone="positive"] p {
+            color: var(--positive);
+        }
+        article[data-tone="negative"] p {
+            color: var(--negative);
+        }
+        article > span:first-child {
+            @apply flex items-center justify-between;
+        }
+        article > span:first-child > span {
+            @apply text-xl;
+            color: var(--accent);
         }
         article > span {
             @apply text-xs;
@@ -91,6 +124,10 @@
         }
     }
 
+    &__metrics &__clock {
+        font-size: clamp(1.15rem, 2.2vw, 1.875rem);
+    }
+
     &__panel {
         @apply overflow-hidden rounded-xl;
         border: 1px solid var(--border);
@@ -99,6 +136,10 @@
     &__market-selection {
         @apply mb-5 flex flex-wrap items-center justify-between gap-3 text-xs;
         color: var(--muted);
+    }
+    &__market-selection h2 {
+        @apply text-base font-semibold;
+        color: var(--text);
     }
     &__quote {
         @apply flex items-center gap-3;
@@ -164,7 +205,7 @@
         min-width: 950px;
     }
     thead {
-        background: #131618;
+        background: var(--background);
     }
     th {
         @apply px-6 py-4 text-[10px] font-medium uppercase tracking-wider;
@@ -191,21 +232,25 @@
     @media (min-width: 1024px) {
         @apply px-10;
     }
-    @media (max-width: 640px) {
-        &__environment {
-            @apply hidden;
+    @media (max-width: 1023px) {
+        &__metrics {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+    }
+    @media (max-width: 640px) {
+        @apply px-4;
+
         &__intro {
             @apply py-8;
         }
         &__intro h1 {
-            @apply text-4xl;
+            @apply text-3xl;
         }
         &__metrics {
-            @apply grid-cols-1 gap-3;
+            @apply gap-3;
         }
         &__metrics article {
-            @apply p-5;
+            @apply p-4;
         }
         &__metrics p {
             @apply my-2;
@@ -231,7 +276,7 @@
 .market-row {
     border-top: 1px solid var(--border);
     &:hover {
-        background: #1c2022;
+        background: var(--raised);
     }
     td {
         @apply px-6 py-4;
@@ -244,7 +289,8 @@
     }
     &__monogram {
         @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-bold;
-        background: #2b3033;
+        background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+        border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
         color: var(--accent);
     }
     &__name {
@@ -264,7 +310,7 @@
         @apply font-medium;
     }
     &__price[data-freshness="stale"] {
-        color: var(--accent);
+        color: var(--warning);
     }
     &__change {
         @apply inline-block rounded px-2 py-1 text-xs;
@@ -289,7 +335,7 @@
         color: var(--positive);
     }
     &__status[data-status="stale"] {
-        color: var(--accent);
+        color: var(--warning);
     }
     &__time {
         @apply mt-1 block text-xs;
@@ -298,6 +344,6 @@
     }
     &__old {
         @apply mt-1 block text-[10px];
-        color: var(--accent);
+        color: var(--warning);
     }
 }

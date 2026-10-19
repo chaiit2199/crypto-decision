@@ -15,11 +15,13 @@ type MarketDetailsProps = {
     asset: Asset;
     quoteAsset: QuoteAsset;
     now: number;
+    refreshIntervalMs: number;
+    refreshVersion: number;
 };
 
 const TIMEFRAMES: Timeframe[] = ["1h", "4h", "1d"];
 
-export function MarketDetails({ asset, quoteAsset, now }: MarketDetailsProps) {
+export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refreshVersion }: MarketDetailsProps) {
     const [timeframe, setTimeframe] = useState<Timeframe>("1h");
     const market = selectedMarket(asset, quoteAsset);
     const stats = market?.ticker_stats;
@@ -32,7 +34,7 @@ export function MarketDetails({ asset, quoteAsset, now }: MarketDetailsProps) {
             <header className="market-details__header">
                 <div>
                     <p className="market-monitor__eyebrow">
-                        CHI TIẾT TÀI SẢN{market && ` · ${market.exchange.toUpperCase()}`}
+                        THỊ TRƯỜNG{market && ` · ${market.exchange.toUpperCase()}`}
                     </p>
                     <h2 id="market-details-title">
                         {asset.symbol} <span>{asset.name}</span>
@@ -55,7 +57,10 @@ export function MarketDetails({ asset, quoteAsset, now }: MarketDetailsProps) {
             <dl className="market-details__stats">
                 <div>
                     <dt>Thay đổi 24h</dt>
-                    <dd title={stats?.price_change_percent}>
+                    <dd
+                        title={stats?.price_change_percent}
+                        data-direction={stats?.price_change_percent.startsWith("-") ? "down" : "up"}
+                    >
                         {formatPercentage(stats?.price_change_percent)}
                         {stats && "%"}
                     </dd>
@@ -75,42 +80,45 @@ export function MarketDetails({ asset, quoteAsset, now }: MarketDetailsProps) {
             </dl>
             {statsStale && <p className="market-chart__notice">Thống kê 24h đã cũ; đang chờ lần đồng bộ tiếp theo.</p>}
             {!stats && <p className="market-details__hint">Chưa có thống kê 24h.</p>}
-            <MarketAnalysis market={market} now={now} />
-            {market?.exchange === "gold_api" && (
-                <p className="market-chart__empty">XAU/USD là giá vàng tham chiếu. Chưa có lịch sử nến vàng để vẽ biểu đồ và tính chỉ báo; nguồn lịch sử cần API key riêng.</p>
-            )}
-            {market && market.exchange !== "gold_api" && (
-                <>
-                    <div className="market-details__chart-header">
-                        <div>
-                            <h3>Lịch sử giá</h3>
-                            <p>Kéo để di chuyển · Cuộn để phóng to</p>
-                        </div>
-                        <div className="market-details__timeframes" role="group" aria-label="Khung thời gian biểu đồ">
-                            {TIMEFRAMES.map((value) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    aria-pressed={timeframe === value}
-                                    onClick={() => setTimeframe(value)}
-                                >
-                                    {value.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <MarketHistory
-                        key={`${market.exchange}:${market.symbol}:${timeframe}`}
-                        symbol={market.symbol}
-                        exchange={market.exchange}
-                        timeframe={timeframe}
-                        snapshotPrice={market.latest_price?.price}
-                    />
-                </>
-            )}
-            {!market && (
-                <p className="market-chart__empty">Chưa có thị trường khả dụng để tải lịch sử của {asset.symbol}.</p>
-            )}
+            <div className="market-details__workspace">
+                <div className="market-details__history">
+                    {market?.exchange === "gold_api" && (
+                        <p className="market-chart__empty">XAU/USD là giá vàng tham chiếu. Chưa có lịch sử nến vàng để vẽ biểu đồ và tính chỉ báo; nguồn lịch sử cần API key riêng.</p>
+                    )}
+                    {market && market.exchange !== "gold_api" && (
+                        <>
+                            <div className="market-details__chart-header">
+                                <h3>Lịch sử giá</h3>
+                                <div className="market-details__timeframes" role="group" aria-label="Khung thời gian biểu đồ">
+                                    {TIMEFRAMES.map((value) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            aria-pressed={timeframe === value}
+                                            onClick={() => setTimeframe(value)}
+                                        >
+                                            {value.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <MarketHistory
+                                key={`${market.exchange}:${market.symbol}:${timeframe}`}
+                                symbol={market.symbol}
+                                exchange={market.exchange}
+                                timeframe={timeframe}
+                                snapshotPrice={market.latest_price?.price}
+                                refreshIntervalMs={refreshIntervalMs}
+                                refreshVersion={refreshVersion}
+                            />
+                        </>
+                    )}
+                    {!market && (
+                        <p className="market-chart__empty">Chưa có thị trường khả dụng để tải lịch sử của {asset.symbol}.</p>
+                    )}
+                </div>
+                <MarketAnalysis market={market} now={now} />
+            </div>
         </section>
     );
 }

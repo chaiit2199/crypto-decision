@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { refreshMarketMonitor } from "@/lib/api/monitor-client";
 import type { MarketMonitorResult } from "@/lib/api/types";
@@ -27,6 +27,15 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    const pollInterval = useRef(
+        initialResult.ok ? initialResult.data.status.price_poll_interval_seconds * 1000 : 300_000,
+    );
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     useEffect(() => {
         const controller = new AbortController();
         let timer: ReturnType<typeof setTimeout>;
@@ -39,6 +48,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
             }
 
             if (result.ok) {
+                pollInterval.current = result.data.status.price_poll_interval_seconds * 1000;
                 setData(result.data);
                 setError(null);
             } else {
@@ -48,7 +58,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
             setNow(Date.now());
             setIsRefreshing(false);
             // Schedule after completion so slow requests never accumulate.
-            timer = setTimeout(refresh, 300_000);
+            timer = setTimeout(refresh, pollInterval.current);
         }
 
         timer = setTimeout(refresh, 0);
@@ -60,7 +70,6 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
 
     const assets = data?.assets ?? [];
     const selectedAsset = assets.find((asset) => asset.symbol === selectedSymbol);
-    const market = selectedAsset ? selectedMarket(selectedAsset, quoteAsset) : undefined;
     const search = query.trim().toLowerCase();
     const visibleAssets = assets.filter((asset) =>
         `${asset.symbol} ${asset.name} ${asset.markets.map((market) => market.symbol).join(" ")}`
@@ -72,8 +81,17 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
         (asset) => priceStatus(selectedMarket(asset, quoteAsset), now) === "fresh",
     ).length;
     const collector = quoteAsset === "USD" ? data?.status.sources.coinbase : data?.status.collector;
-    const jobs = data?.status.jobs;
-    const pendingJobs = (jobs?.available ?? 0) + (jobs?.scheduled ?? 0) + (jobs?.retryable ?? 0);
+    const currentStats = availableAssets.flatMap((asset) => {
+        const market = selectedMarket(asset, quoteAsset);
+        const stats = market?.ticker_stats;
+        if (!stats || market.stats_freshness.status !== "fresh" || now - Date.parse(stats.fetched_at) > 600_000) {
+            return [];
+        }
+        return [stats];
+    });
+    const risingCount = currentStats.filter((stats) => Number(stats.price_change_percent) > 0).length;
+    const fallingCount = currentStats.filter((stats) => Number(stats.price_change_percent) < 0).length;
+    const refreshIntervalMs = (data?.status.price_poll_interval_seconds ?? 300) * 1000;
     const blocked = collector?.blocked_until && Date.parse(collector.blocked_until) > now;
     let connectionLabel = "Đang kết nối";
 
@@ -113,29 +131,26 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                         CRYPTO<span className="market-monitor__brand-sub">DECISION LAB</span>
                     </span>
                 </Link>
-                <span className="market-monitor__environment">LOCAL / MARKET DATA</span>
+                <a className="market-monitor__nav" href="#watchlist-title">
+                    Danh mục <span aria-hidden="true">↗</span>
+                </a>
             </header>
 
             <section className="market-monitor__intro" aria-labelledby="market-title">
                 <div>
-                    <p className="market-monitor__eyebrow">THỊ TRƯỜNG · {quoteAsset}</p>
+                    <p className="market-monitor__eyebrow">TỔNG QUAN THỊ TRƯỜNG</p>
                     <h1 id="market-title">
-                        Thị trường<span>.</span>
+                        Nhịp đập thị trường<span>.</span>
                     </h1>
-                    <p>Theo dõi giá, biến động và nhịp cập nhật của danh mục.</p>
+                    <p>Quan sát biến động. Nắm bắt xu hướng.</p>
                 </div>
                 <div className="market-monitor__live">
                     <span
                         className="market-monitor__connection"
-                        data-live={!error && freshCount > 0 && data?.status.enabled}
+                        data-live={!error && !blocked && freshCount > 0 && data?.status.enabled}
                     >
                         <span aria-hidden="true" />
                         {connectionLabel}
-                    </span>
-                    <span>
-                        Giá mỗi {(data?.status.price_poll_interval_seconds ?? 300) / 60} phút
-                        {" · "}Jev mỗi {(market?.analysis_interval_seconds ?? 900) / 60} phút
-                        {" · "}Trang làm mới mỗi 5 phút
                     </span>
                 </div>
             </section>
@@ -159,37 +174,49 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                 <p className="market-monitor__notice">Lần đồng bộ gần nhất gặp lỗi: {collector.last_error}</p>
             )}
 
-            <section className="market-monitor__metrics" aria-label="Trạng thái dữ liệu">
+            <section className="market-monitor__metrics" aria-label="Tổng quan danh mục">
                 <article>
-                    <span>Giá còn mới</span>
+                    <span>
+                        Danh mục theo dõi <span aria-hidden="true">◈</span>
+                    </span>
                     <p>
-                        {freshCount}
-                        <small> / {data?.status.configured_assets ?? "—"} tài sản</small>
+                        {data ? assets.length : "—"}<small> tài sản</small>
                     </p>
-                    <span>{availableAssets.length} tài sản có cặp {quoteAsset} khả dụng</span>
+                    <span>{freshCount} / {availableAssets.length} giá đang cập nhật</span>
+                </article>
+                <article data-tone="positive">
+                    <span>
+                        Tăng trong 24h <span aria-hidden="true">↗</span>
+                    </span>
+                    <p>
+                        {currentStats.length > 0 ? risingCount : "—"}<small> tài sản</small>
+                    </p>
+                    <span>Trong {currentStats.length} mã có thống kê mới</span>
+                </article>
+                <article data-tone="negative">
+                    <span>
+                        Giảm trong 24h <span aria-hidden="true">↘</span>
+                    </span>
+                    <p>
+                        {currentStats.length > 0 ? fallingCount : "—"}<small> tài sản</small>
+                    </p>
+                    <span>Theo cặp {quoteAsset}</span>
                 </article>
                 <article>
-                    <span>Snapshot giá gần nhất</span>
+                    <span>
+                        Cập nhật gần nhất <span aria-hidden="true">◷</span>
+                    </span>
                     <p className="market-monitor__clock">{formatTime(collector?.prices_at)}</p>
                     <span>Giờ Việt Nam · UTC+7</span>
-                </article>
-                <article>
-                    <span>Hàng đợi đồng bộ</span>
-                    <p>
-                        {pendingJobs}
-                        <small> job đang chờ</small>
-                    </p>
-                    <span>
-                        {jobs?.executing ?? 0} đang chạy · {jobs?.retryable ?? 0} chờ thử lại · {jobs?.discarded ?? 0}{" "}
-                        lỗi
-                    </span>
                 </article>
             </section>
 
             <div className="market-monitor__market-selection">
+                <h2>Không gian phân tích</h2>
                 <label className="market-monitor__quote">
-                    Đồng tiền của cặp giao dịch
+                    <span>Thị trường</span>
                     <select
+                        aria-label="Đồng tiền của cặp giao dịch"
                         value={quoteAsset}
                         onChange={(event) => {
                             if (event.target.value === "USD" || event.target.value === "USDT") {
@@ -201,7 +228,6 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                         <option value="USD">USD</option>
                     </select>
                 </label>
-                <p>Giá, biểu đồ và Jev theo cặp được chọn.</p>
             </div>
             {data && availableAssets.length === 0 && (
                 <p className="market-monitor__notice" role="status">
@@ -215,6 +241,8 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                     asset={selectedAsset}
                     quoteAsset={quoteAsset}
                     now={now}
+                    refreshIntervalMs={refreshIntervalMs}
+                    refreshVersion={refreshVersion}
                 />
             )}
 
@@ -224,7 +252,6 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                         <h2 id="watchlist-title">
                             Danh mục theo dõi <span>{assets.length}</span>
                         </h2>
-                        <p>Bấm vào mã để xem chi tiết · Giá theo {quoteAsset} · Khối lượng ghi rõ đơn vị</p>
                     </div>
                     <div className="market-monitor__actions">
                         <label className="market-monitor__search">
@@ -289,7 +316,7 @@ export function MarketMonitor({ initialResult, initialTime }: MarketMonitorProps
                     <span>
                         Hiển thị {visibleAssets.length} / {assets.length} tài sản
                     </span>
-                    <span>Giá quá chu kỳ đồng bộ + 60 giây được đánh dấu dữ liệu cũ</span>
+                    <span>{quoteAsset} · Thị trường giao ngay</span>
                 </footer>
             </section>
             <footer className="market-monitor__footer">

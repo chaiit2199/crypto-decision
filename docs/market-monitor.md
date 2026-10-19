@@ -1,5 +1,13 @@
 # Bảng giá development
 
+## Cập nhật giao diện và đồng bộ — 2026-10-19
+
+- Chu kỳ hiện tại trong backend: giá 300 giây, thống kê 24h mỗi 5 phút, nến 1H vào phút 01 mỗi giờ; Jev theo slot 15 phút. Không thay lịch collector trong đợt chỉnh UI này.
+- Frontend lấy chu kỳ từ `status.price_poll_interval_seconds`, truyền cùng chu kỳ xuống biểu đồ; mỗi request hoàn tất mới hẹn lần tiếp theo. Giữ chu kỳ hợp lệ gần nhất khi API lỗi, mặc định 300 giây khi chưa có status. Nút làm mới tải lại cả danh mục và lịch sử đang xem. Đồng hồ freshness cập nhật riêng mỗi giây, không gọi mạng.
+- Giao diện nền xanh đen, điểm nhấn mint, bố cục biểu đồ và phân tích song song trên desktop, xếp dọc trên mobile. Tổng quan thể hiện số tài sản, số mã tăng/giảm có thống kê còn mới; không dùng dữ liệu thiếu/cũ để suy ra biến động.
+- Bỏ wording tần suất poll, hướng dẫn thao tác lặp và chi tiết job trên màn hình chính. Thu gọn thông số chỉ báo trong disclosure; giữ timestamp, cảnh báo lỗi/stale, nguồn dữ liệu và attribution.
+- Nghiệm thu: TypeScript, ESLint, kiểm thử browser cho polling theo backend, refresh cả biểu đồ, freshness khi không fetch, lỗi vẫn giữ snapshot, chuyển cặp/khung và không tràn trang mobile. Kiểm tra ảnh desktop/mobile nếu môi trường browser khả dụng.
+
 Phạm vi theo yêu cầu: một trang theo dõi giá trong `apps/web`, chưa triển khai dashboard quyết định, chỉ báo hoặc giao dịch. Phoenix vẫn sở hữu việc lấy dữ liệu Binance và ghi PostgreSQL.
 
 ## Luồng dữ liệu
@@ -8,8 +16,8 @@ Phạm vi theo yêu cầu: một trang theo dõi giá trong `apps/web`, chưa tr
 - Repo Oban dùng chung ở `config/config.exs`; runtime ghép queue và Cron riêng cho market/Jev theo công tắc môi trường. Giá dùng supervised poller 5 phút, không dùng Cron dưới một phút. Nếu backfill chiếm khóa, poller thử lại khóa sau 1 giây; deadline chia sẻ vẫn chặn request Binance dư.
 - Bootstrap ưu tiên snapshot giá và thống kê trước backfill. Job backfill có độ ưu tiên thấp hơn các job cập nhật hiện tại.
 - Next.js App Router tải dữ liệu ban đầu phía server. Route `/api/market-monitor` chỉ đọc hai endpoint Phoenix cố định (`/api/markets`, `/api/system/market-data-status`); không chuyển tiếp URL tùy ý hoặc lộ cấu hình DB.
-- Client đọc lại route này mỗi 5 phút, không request chồng lấn; backend lấy giá mỗi 5 phút. Có nút tải lại và tìm kiếm asset/cặp. Đây là cập nhật snapshot, không phải WebSocket từng giao dịch.
-- Schema Zod ở ranh giới HTTP; Decimal giữ dưới dạng chuỗi. UI thể hiện thời điểm lấy giá, trạng thái thiếu/cũ, collector và số job; không tạo giá giả.
+- Client đọc lại route này theo `price_poll_interval_seconds` (hiện là 5 phút), không request chồng lấn; backend lấy giá mỗi 5 phút. Có nút tải lại và tìm kiếm asset/cặp. Đây là cập nhật snapshot, không phải WebSocket từng giao dịch.
+- Schema Zod ở ranh giới HTTP; Decimal giữ dưới dạng chuỗi. UI thể hiện thời điểm lấy giá, trạng thái thiếu/cũ và số mã tăng/giảm có thống kê còn mới; không tạo giá giả.
 
 ## Cấu trúc và giao diện
 
@@ -21,7 +29,7 @@ Chọn Tailwind 3.4 cùng Sass/PostCSS để giữ quy ước SCSS + `@apply` c�
 
 - Khởi động web local, đọc dữ liệu DB thật qua Phoenix; thời điểm snapshot tiếp tục tăng khi collector hoạt động.
 - Hiển thị đủ danh mục, cho biết asset không có Spot USDT; tìm kiếm ETH dẫn tới cặp ETHUSDT.
-- API lỗi vẫn giữ snapshot trước đó với cảnh báo mất kết nối; không gắn nhãn fresh cho dữ liệu quá 90 giây.
+- API lỗi vẫn giữ snapshot trước đó với cảnh báo mất kết nối; không gắn nhãn fresh khi quá `price_max_age_seconds` backend trả về (hiện là 360 giây).
 - Kiểm tra cấu hình dev/prod/test và ưu tiên job; chạy `mix precommit`, TypeScript, ESLint và build web.
 - Không ghi dữ liệu dev trong test. Giữ server người dùng đang chạy; nếu cổng API bận, khởi động instance mới trên cổng khác và đặt `API_BASE_URL` cho web.
 
@@ -31,10 +39,16 @@ Chọn Tailwind 3.4 cùng Sass/PostCSS để giữ quy ước SCSS + `@apply` c�
 - Giá nháy xanh khi tăng, đỏ khi giảm, một lần trong khoảng 0,8 giây; so sánh chuỗi Decimal chính xác bằng BigInt, không làm tròn qua float. Không nháy khi render lần đầu, cùng giá hoặc thiếu dữ liệu; tôn trọng prefers-reduced-motion.
 - Bấm tên/cặp hoặc dòng tài sản mở panel chi tiết ngay trên bảng; có nút mã truy cập bằng bàn phím, trạng thái lựa chọn rõ ràng. Panel dùng snapshot đang có, tự cập nhật theo bảng. Hiển thị giá, biến động, high/low, volume và freshness. Asset chưa có thị trường vẫn xem được thông tin thiếu dữ liệu.
 - Chart dùng TradingView Lightweight Charts theo kiến trúc dự án. Nến OHLC và volume lấy từ PostgreSQL qua `/api/markets/:symbol/candles`, 120 nến đã đóng, các khung 1H/4H/1D. Khung 4H/1D tổng hợp phía backend; thiếu dữ liệu phải báo rõ, không tạo nến thay thế.
-- Next.js thêm route chỉ đọc `/api/market-candles?symbol=BTCUSDT&timeframe=1h`; giới hạn timeframe và số nến cố định, không chấp nhận URL tùy ý. Dùng Zod ở ranh giới backend response; có trạng thái tải/lỗi/rỗng, hủy request cũ khi chuyển mã/khung. Đọc lại chart mỗi 60 giây; giữ viewport khi cùng mã/khung và dữ liệu cập nhật.
+- Next.js thêm route chỉ đọc `/api/market-candles?symbol=BTCUSDT&timeframe=1h`; giới hạn timeframe và số nến cố định, không chấp nhận URL tùy ý. Dùng Zod ở ranh giới backend response; có trạng thái tải/lỗi/rỗng, hủy request cũ khi chuyển mã/khung. Đọc lại chart theo cùng chu kỳ backend trả về cho bảng giá; giữ viewport khi cùng mã/khung và dữ liệu cập nhật.
 - Chỉ đổi Decimal sang Number tại adapter vẽ canvas vì thư viện chart yêu cầu số; dữ liệu API, lưu trữ, so sánh tăng/giảm và các giá trị hiển thị vẫn giữ chuỗi gốc. Đường snapshot tách riêng, không ghi snapshot vào nến đã đóng. Trục thời gian chart hiện hiển thị giờ Việt Nam; timestamp gốc vẫn là UTC (xem cập nhật múi giờ bên dưới).
 - Giữ attribution TradingView và NOTICE của thư viện. Kiểm tra precision/flash, đổi mã/khung nhanh, thiếu dữ liệu, lỗi API, chart resize và giảm chuyển động; chạy TypeScript, lint, build và browser checks khi công cụ khả dụng.
 
 ## Múi giờ hiển thị
 
 Chart hiển thị giờ Việt Nam (`Asia/Ho_Chi_Minh`, UTC+7) cho tick trên trục, nhãn crosshair và thời gian nến trong phần mô tả. Formatter xử lý cả chuyển ngày/tháng/năm, không phụ thuộc múi giờ máy người xem. Timestamp truyền vào chart và lưu trong DB vẫn là UTC; không cộng 7 giờ vào dữ liệu. Nến 4H/1D vẫn tổng hợp theo ranh giới UTC: nến ngày 00:00 UTC xuất hiện ở 07:00 giờ Việt Nam, không phải một nến ngày mới tổng hợp từ 00:00 giờ Việt Nam.
+
+## Kiểm tra đợt UI 2026-10-19
+
+- Đã chạy thành công: `npx tsc --noEmit`, `npm run lint`, biên dịch SCSS qua Sass + Tailwind + Autoprefixer (0 warning), hai test Decimal/múi giờ bằng Playwright runner.
+- Đã bổ sung browser tests cho chu kỳ backend, làm mới nến và freshness độc lập với fetch; chưa chạy browser suite/ảnh desktop-mobile vì quyền chạy Next.js local bị từ chối.
+- `npm run build` bị sandbox chặn lúc Turbopack mở cổng nội bộ để xử lý stylesheet; yêu cầu chạy build ngoài sandbox cũng bị từ chối. Chưa xác nhận production build. Không thay đổi backend hay triển khai lên hosting.
