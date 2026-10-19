@@ -108,8 +108,8 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
             )}
             {analysis && (
                 <p className="market-analysis__time">
-                    Lần đánh giá: {formatChartTime(analysis.analyzed_at)}{" "}
-                    (giờ Việt Nam)
+                    Lần đánh giá: {formatChartTime(analysis.analyzed_at)} (giờ
+                    Việt Nam)
                     {stale && " · Đã hết hạn · chờ kết quả mới"}
                 </p>
             )}

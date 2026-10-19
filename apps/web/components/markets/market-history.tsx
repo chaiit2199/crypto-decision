@@ -35,7 +35,12 @@ export function MarketHistory({
         let timer: ReturnType<typeof setTimeout>;
 
         async function refresh() {
-            const result = await refreshMarketCandles(symbol, exchange, timeframe, controller.signal);
+            const result = await refreshMarketCandles(
+                symbol,
+                exchange,
+                timeframe,
+                controller.signal,
+            );
 
             if (controller.signal.aborted) {
                 return;
@@ -69,7 +74,8 @@ export function MarketHistory({
         <div className="market-chart" aria-busy={!data && !error}>
             {error && (
                 <p className="market-chart__notice" role="alert">
-                    {error} {data && "Đang giữ biểu đồ của lần tải thành công trước."}
+                    {error}{" "}
+                    {data && "Đang giữ biểu đồ của lần tải thành công trước."}
                     <button type="button" onClick={handleRetry}>
                         Thử lại
                     </button>
@@ -81,7 +87,10 @@ export function MarketHistory({
                 </p>
             )}
             {data && data.data.length === 0 && (
-                <p className="market-chart__empty">Chưa có nến đã đóng trong khoảng này. Lịch sử đang được đồng bộ.</p>
+                <p className="market-chart__empty">
+                    Chưa có nến đã đóng trong khoảng này. Lịch sử đang được đồng
+                    bộ.
+                </p>
             )}
             {data && data.data.length > 0 && (
                 <>
@@ -97,20 +106,19 @@ export function MarketHistory({
                         <span>L {formatDecimal(lastCandle?.low)}</span>
                         <span>C {formatDecimal(lastCandle?.close)}</span>
                     </div>
-                    <CandleChart candles={data.data} symbol={symbol} snapshotPrice={snapshotPrice} />
+                    <CandleChart
+                        candles={data.data}
+                        symbol={symbol}
+                        snapshotPrice={snapshotPrice}
+                    />
                     <p className="market-chart__caption">
                         {data.data.length} nến đã đóng · khối lượng theo tài sản
                         gốc · giờ Việt Nam
-                        {data.meta.freshness.status === "stale" && " · Lịch sử chưa cập nhật đến hiện tại"}
+                        {data.meta.freshness.status === "stale" &&
+                            " · Lịch sử chưa cập nhật đến hiện tại"}
                     </p>
                 </>
             )}
-            <p className="market-chart__attribution">
-                Chart:{" "}
-                <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">
-                    TradingView Lightweight Charts™
-                </a>
-            </p>
         </div>
     );
 }

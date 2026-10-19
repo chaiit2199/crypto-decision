@@ -52,3 +52,9 @@ Chart hiển thị giờ Việt Nam (`Asia/Ho_Chi_Minh`, UTC+7) cho tick trên t
 - Đã chạy thành công: `npx tsc --noEmit`, `npm run lint`, biên dịch SCSS qua Sass + Tailwind + Autoprefixer (0 warning), hai test Decimal/múi giờ bằng Playwright runner.
 - Đã bổ sung browser tests cho chu kỳ backend, làm mới nến và freshness độc lập với fetch; chưa chạy browser suite/ảnh desktop-mobile vì quyền chạy Next.js local bị từ chối.
 - `npm run build` bị sandbox chặn lúc Turbopack mở cổng nội bộ để xử lý stylesheet; yêu cầu chạy build ngoài sandbox cũng bị từ chối. Chưa xác nhận production build. Không thay đổi backend hay triển khai lên hosting.
+
+## Tín hiệu Jev trong danh mục — 2026-10-19
+
+Mỗi `MarketRow` đọc analysis của đúng cặp đang chọn (USD/USDT) từ response danh mục đã có. Chỉ asset enabled, market đang giao dịch, analysis enabled/ready/fresh và chưa tới `valid_until` mới được hiển thị tín hiệu BUY/SELL. BUY có nhãn Jev · MUA và hiệu ứng xanh; SELL có nhãn Jev · BÁN và hiệu ứng đỏ. WAIT, NO_DATA, lỗi, chưa có dữ liệu hoặc hết hạn không có nhãn/hiệu ứng tín hiệu. Đồng hồ hiện có cập nhật mỗi giây để gỡ tín hiệu hết hạn, kể cả khi request tiếp theo chưa thành công. Không thêm request inference hoặc sửa quy tắc tạo tín hiệu. Reduced motion giữ màu/nhãn nhưng tắt animation. Kiểm tra bằng fixture trình duyệt cho tất cả trạng thái và thay đổi tín hiệu sau refresh.
+
+Đã chạy `npx tsc --noEmit`, ESLint các file thay đổi và browser test `watchlist highlights` (20 mã synthetic, không ghi DB). Dùng `WEB_TEST_URL=http://localhost:3000` cho server dev hiện tại; hostname 127.0.0.1 bị Next dev chặn HMR, nên các lần thử trên hostname đó không nhận fixture qua tương tác. Không sửa config server hoặc các thay đổi đang có ở panel phân tích/chart.

@@ -150,6 +150,7 @@ export function MarketDetails({
                     </dd>
                 </div>
             </dl>
+
             {statsStale && (
                 <p className="market-chart__notice">
                     Thống kê 24h đã cũ; đang chờ lần đồng bộ tiếp theo.

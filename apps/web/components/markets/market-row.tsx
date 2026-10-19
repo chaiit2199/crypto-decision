@@ -34,6 +34,18 @@ export function MarketRow({
     onSelect,
 }: MarketRowProps) {
     const market = selectedMarket(asset, quoteAsset);
+    const analysis = market?.analysis;
+    const hasActiveSignal =
+        asset.enabled &&
+        market?.analysis_enabled &&
+        !market.analysis_unavailable_reason &&
+        analysis?.status === "ready" &&
+        analysis.freshness === "fresh" &&
+        now < Date.parse(analysis.valid_until);
+    const signal =
+        hasActiveSignal && (analysis.signal === "BUY" || analysis.signal === "SELL")
+            ? analysis.signal
+            : undefined;
     const freshness = priceStatus(market, now);
     const change = market?.ticker_stats?.price_change_percent;
     const negative = change?.startsWith("-");
@@ -60,6 +72,7 @@ export function MarketRow({
         <tr
             className="market-row"
             data-selected={selected}
+            data-jev-signal={signal}
             onClick={() => onSelect(asset.symbol)}
         >
             <td>
@@ -78,6 +91,12 @@ export function MarketRow({
                             {asset.symbol}
                         </button>
                         <span className="market-row__name">{asset.name}</span>
+                        {signal && (
+                            <span className="market-row__signal">
+                                <span aria-hidden="true">{signal === "BUY" ? "↑" : "↓"}</span>
+                                Jev · {signal === "BUY" ? "MUA" : "BÁN"}
+                            </span>
+                        )}
                     </div>
                 </div>
             </td>

@@ -99,6 +99,122 @@ function fixtureCandles(timeframe = "1h") {
     };
 }
 
+test("watchlist highlights only active Jev BUY/SELL for every row and selected quote", async ({ page }) => {
+    const now = Date.now();
+    const analysis: MarketAnalysisData = {
+        id: 1,
+        status: "ready",
+        signal: "BUY",
+        model: "fixture-jev",
+        reason: null,
+        analyzed_at: new Date(now).toISOString(),
+        valid_until: new Date(now + 300_000).toISOString(),
+        data_at: new Date(now).toISOString(),
+        freshness: "fresh",
+        features: {},
+        answers: {
+            trend: {
+                type: "choice",
+                choice: "BULLISH",
+                confidence: 0.8,
+                probabilities: { BULLISH: 0.8, BEARISH: 0.1, SIDEWAYS: 0.1 },
+            },
+            momentum: {
+                type: "choice",
+                choice: "STRENGTHENING",
+                confidence: 0.8,
+                probabilities: { STRENGTHENING: 0.8, WEAKENING: 0.1, MIXED: 0.1 },
+            },
+            volatility: {
+                type: "choice",
+                choice: "NORMAL",
+                confidence: 0.8,
+                probabilities: { NORMAL: 0.8, ELEVATED: 0.2 },
+            },
+        },
+        risk_result: { execution_allowed: false, mode: "research_only" },
+    };
+    const monitor = fixtureMonitor("100", analysis);
+    const template = monitor.data.assets[0];
+    const symbols = [
+        "BTC", "ARB", "OP", "SUI", "APT", "RENDER", "TIA", "ONDO", "PYTH", "EIGEN",
+        "FET", "NEAR", "TAO", "IMX", "INJ", "SEI", "IO", "BONK", "WIF", "WLD",
+    ];
+    monitor.data.assets = symbols.map((symbol, index) => ({
+        ...template,
+        id: index + 1,
+        symbol,
+        name: `Fixture ${symbol}`,
+        markets: [{
+            ...template.markets[0],
+            id: index + 1,
+            symbol: `${symbol}USDT`,
+            base_asset: symbol,
+            analysis: { ...analysis, signal: "WAIT" },
+        }],
+    }));
+    const markets = monitor.data.assets.map((asset) => asset.markets[0]);
+    markets[0].analysis = { ...analysis, signal: "BUY" };
+    markets[1].analysis = { ...analysis, signal: "SELL" };
+    markets[2].analysis = { ...analysis, signal: "NO_DATA" };
+    markets[3].analysis = { ...analysis, status: "error" };
+    markets[4].analysis = { ...analysis, status: "no_data" };
+    markets[5].analysis = { ...analysis, freshness: "stale" };
+    markets[6].analysis = { ...analysis, valid_until: new Date(now - 1).toISOString() };
+    markets[7].analysis = null;
+    markets[8].analysis = analysis;
+    markets[8].analysis_enabled = false;
+    markets[9].analysis = analysis;
+    markets[9].enabled = false;
+    markets[10].analysis = analysis;
+    monitor.data.assets[10].enabled = false;
+    markets[11].analysis = analysis;
+    markets[11].trading_status = "HALT";
+    markets[12].analysis = analysis;
+    markets[12].analysis_unavailable_reason = "gold_history_unavailable";
+    monitor.data.assets[0].markets.push({
+        ...markets[0],
+        id: 100,
+        symbol: "BTCUSD",
+        quote_asset: "USD",
+        exchange: "coinbase",
+        analysis: { ...analysis, signal: "SELL" },
+    });
+    await page.route("**/api/market-monitor", (route) => route.fulfill({ json: monitor }));
+    await page.route("**/api/market-candles?**", (route) => route.fulfill({ json: fixtureCandles() }));
+    await page.goto("/");
+    await page.getByRole("button", { name: "Làm mới", exact: true }).click();
+    await expect(page.locator(".market-row").first()).toContainText("Fixture BTC");
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
+    const rows = page.locator(".market-row");
+    await expect(rows).toHaveCount(20);
+    await expect(rows.nth(0)).toHaveAttribute("data-jev-signal", "BUY");
+    await expect(rows.nth(1)).toHaveAttribute("data-jev-signal", "SELL");
+    await expect(page.locator(".market-row__signal")).toHaveCount(2);
+    await expect(rows.nth(0).locator(".market-row__signal")).toContainText("Jev · MUA");
+    await expect(rows.nth(1).locator(".market-row__signal")).toContainText("Jev · BÁN");
+    await expect(rows.nth(0).locator(".market-row__signal")).toHaveCSS("animation-name", "market-jev-pulse");
+    const buyColor = await rows.nth(0).locator(".market-row__signal").evaluate((el) => getComputedStyle(el).color);
+    const sellColor = await rows.nth(1).locator(".market-row__signal").evaluate((el) => getComputedStyle(el).color);
+    expect(buyColor).not.toBe(sellColor);
+    await page.getByRole("button", { name: "Xem chi tiết ARB", exact: true }).click();
+    await expect(rows.nth(1)).toHaveAttribute("data-selected", "true");
+    await expect(rows.nth(0)).toHaveAttribute("data-jev-signal", "BUY");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(rows.nth(0).locator(".market-row__signal")).toHaveCSS("animation-name", "none");
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USD");
+    await expect(rows.nth(0)).toHaveAttribute("data-jev-signal", "SELL");
+    await expect(page.locator(".market-row__signal")).toHaveCount(1);
+    await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
+    markets[0].analysis = { ...analysis, signal: "WAIT" };
+    markets[1].analysis = { ...analysis, signal: "BUY" };
+    await page.getByRole("button", { name: "Làm mới", exact: true }).click();
+    await expect(rows.nth(0).locator(".market-row__signal")).toHaveCount(0);
+    await expect(rows.nth(1)).toHaveAttribute("data-jev-signal", "BUY");
+    await page.clock.setFixedTime(now + 300_000);
+    await expect(page.locator(".market-row__signal")).toHaveCount(0);
+});
+
 test("decimal direction preserves precision and ignores equivalent representations", () => {
     expect(priceDirection(undefined, "100")).toBeNull();
     expect(priceDirection("100", undefined)).toBeNull();

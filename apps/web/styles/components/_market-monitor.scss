@@ -378,6 +378,36 @@
 
 .market-row {
     border-top: 1px solid var(--border);
+
+    &[data-jev-signal="BUY"] {
+        --jev-signal-color: var(--positive);
+    }
+
+    &[data-jev-signal="SELL"] {
+        --jev-signal-color: var(--negative);
+    }
+
+    &[data-jev-signal] td {
+        background: color-mix(in srgb, var(--jev-signal-color) 7%, transparent);
+    }
+
+    &[data-jev-signal] &__monogram {
+        color: var(--jev-signal-color);
+        border-color: var(--jev-signal-color);
+        background: color-mix(in srgb, var(--jev-signal-color) 12%, var(--surface));
+    }
+
+    &__signal {
+        @apply mt-2 inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold;
+        color: var(--jev-signal-color);
+        border: 1px solid currentColor;
+        background: color-mix(in srgb, var(--jev-signal-color) 12%, var(--surface));
+        animation: market-jev-pulse 2.4s ease-in-out infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
     &:hover {
         background: var(--raised);
     }
@@ -448,5 +478,15 @@
     &__old {
         @apply mt-1 block text-[10px];
         color: var(--warning);
+    }
+}
+
+@keyframes market-jev-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+    50% {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--jev-signal-color) 20%, transparent);
     }
 }
