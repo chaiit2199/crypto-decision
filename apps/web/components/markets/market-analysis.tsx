@@ -1,5 +1,4 @@
 import type { Market } from "@/lib/api/types";
-import { formatIndicator } from "@/lib/format/market";
 import { formatChartTime } from "@/lib/format/chart-time";
 import {
     ANSWER_EXPLANATIONS,
@@ -39,81 +38,6 @@ const ANSWER_NAMES: Record<string, string> = {
     volatility: "Biến động",
     holding_horizon: "Thời gian giữ gợi ý",
 };
-
-const INDICATORS = [
-    {
-        key: "ema20",
-        name: "EMA20",
-        description:
-            "Trung bình giá hàm mũ chu kỳ 20 nến 1H, ưu tiên giá gần đây để theo dõi xu hướng ngắn hạn.",
-    },
-    {
-        key: "ema50",
-        name: "EMA50",
-        description:
-            "Trung bình giá hàm mũ chu kỳ 50 nến 1H, giúp quan sát xu hướng ít nhạy hơn EMA20.",
-    },
-    {
-        key: "ema200",
-        name: "EMA200",
-        description:
-            "Trung bình giá hàm mũ chu kỳ 200 nến 1H, dùng làm mốc tham chiếu xu hướng dài hơn.",
-    },
-    {
-        key: "rsi14",
-        name: "RSI14",
-        description:
-            "Đo động lượng giá chu kỳ 14 nến trên thang 0–100; giá trị cao cho thấy mức tăng chiếm ưu thế.",
-    },
-    {
-        key: "macd",
-        name: "MACD (12/26)",
-        description:
-            "Chênh lệch EMA12 và EMA26, cho biết đường trung bình nhanh đang cao hay thấp hơn đường chậm.",
-    },
-    {
-        key: "macd_signal",
-        name: "Đường tín hiệu MACD (9)",
-        description:
-            "Trung bình hàm mũ 9 kỳ của MACD, dùng làm mốc so sánh động lượng.",
-    },
-    {
-        key: "macd_histogram",
-        name: "Cột MACD",
-        description:
-            "MACD trừ đường tín hiệu; dương khi MACD nằm trên đường tín hiệu.",
-    },
-    {
-        key: "atr14",
-        name: "ATR14",
-        description:
-            "Đo biên độ biến động giá chu kỳ 14 nến, theo đơn vị giá của cặp; không cho biết hướng tăng/giảm.",
-    },
-    {
-        key: "adx14",
-        name: "ADX14",
-        description:
-            "Đo sức mạnh xu hướng chu kỳ 14 nến trên thang 0–100; càng cao, xu hướng càng mạnh, bất kể hướng.",
-    },
-    {
-        key: "relative_volume20",
-        name: "Khối lượng tương đối (20)",
-        description:
-            "Khối lượng nến đã đóng gần nhất chia trung bình 20 nến trước; trên 1 là cao hơn trung bình.",
-    },
-    {
-        key: "return_1h_percent",
-        name: "Biến động 1H (%)",
-        description:
-            "Phần trăm thay đổi giữa hai giá đóng cửa 1H gần nhất; dương là tăng, âm là giảm.",
-    },
-    {
-        key: "return_24h_percent",
-        name: "Biến động 24H (%)",
-        description:
-            "Phần trăm thay đổi của giá đóng cửa gần nhất so với 24 nến 1H trước; dương là tăng, âm là giảm.",
-    },
-] as const;
 
 const REASON_LABELS: Record<string, string> = {
     authentication_failed:
@@ -226,39 +150,16 @@ export function MarketAnalysis({ market, now }: MarketAnalysisProps) {
                     </dl>
                 </>
             )}
-            {analysis?.features.rsi14 !== undefined && (
-                <details className="market-analysis__indicators">
-                    <summary>
-                        Chỉ báo kỹ thuật{" "}
-                        <span>{market?.quote_asset} · 1 giờ</span>
-                    </summary>
-                    <dl className="market-analysis__features">
-                        {INDICATORS.map(({ key, name, description }) => (
-                            <div key={key}>
-                                <dt>{name}</dt>
-                                <dd
-                                    className="market-analysis__value"
-                                    title={analysis.features[key] ?? undefined}
-                                >
-                                    {formatIndicator(analysis.features[key])}
-                                </dd>
-                                <dd>{description}</dd>
-                            </div>
-                        ))}
-                    </dl>
-                </details>
-            )}
-            {analysis?.features.last_close_time && (
+            {analysis?.model && (
                 <p className="market-analysis__time">
-                    Nến nguồn đóng lúc{" "}
-                    {formatChartTime(analysis.features.last_close_time)} (giờ
-                    Việt Nam)
-                    {analysis.model && ` · mô hình ${analysis.model}`}
+                    Mô hình {analysis.model}
+                    {analysis.features.last_close_time &&
+                        ` · nến nguồn ${formatChartTime(analysis.features.last_close_time)} (giờ Việt Nam)`}
                 </p>
             )}
             <p className="market-analysis__caption">
                 Chỉ phục vụ nghiên cứu · độ tin cậy mô hình không phải xác suất
-                có lãi.
+                có lãi. Chỉ báo số nằm dưới biểu đồ.
             </p>
         </section>
     );

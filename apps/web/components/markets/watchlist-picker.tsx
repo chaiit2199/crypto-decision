@@ -3,7 +3,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { Asset } from "@/lib/api/types";
-import { formatDecimal, formatPercentage, priceStatus } from "@/lib/format/market";
+import {
+    formatDecimal,
+    formatPercentage,
+    priceStatus,
+} from "@/lib/format/market";
 import { selectedMarket } from "@/lib/markets/selected-market";
 import type { QuoteAsset } from "@/lib/markets/selected-market";
 
@@ -78,7 +82,19 @@ export function WatchlistPicker({
                 aria-label="Tìm trong danh mục theo dõi"
                 onClick={() => setOpen((value) => !value)}
             >
-                <span aria-hidden="true">⌕</span>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 6.35 6.35"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <path
+                        d="M2.894.511a2.384 2.384 0 0 0-2.38 2.38 2.386 2.386 0 0 0 2.38 2.384c.56 0 1.076-.197 1.484-.523l.991.991a.265.265 0 0 0 .375-.374l-.991-.992a2.37 2.37 0 0 0 .523-1.485C5.276 1.58 4.206.51 2.894.51m0 .53c1.026 0 1.852.825 1.852 1.85S3.92 4.746 2.894 4.746s-1.851-.827-1.851-1.853.825-1.852 1.851-1.852"
+                        fill="currentColor"
+                    />
+                </svg>
                 <span>Danh mục</span>
             </button>
 
@@ -110,7 +126,8 @@ export function WatchlistPicker({
                             const market = selectedMarket(asset, quoteAsset);
                             const active = asset.symbol === selectedSymbol;
                             const freshness = priceStatus(market, now);
-                            const change = market?.ticker_stats?.price_change_percent;
+                            const change =
+                                market?.ticker_stats?.price_change_percent;
 
                             return (
                                 <li key={asset.id}>
@@ -120,7 +137,9 @@ export function WatchlistPicker({
                                         aria-selected={active}
                                         className="watchlist-picker__option"
                                         data-active={active || undefined}
-                                        onClick={() => handleSelect(asset.symbol)}
+                                        onClick={() =>
+                                            handleSelect(asset.symbol)
+                                        }
                                     >
                                         <span className="watchlist-picker__symbol">
                                             <strong>{asset.symbol}</strong>
@@ -130,9 +149,7 @@ export function WatchlistPicker({
                                             </small>
                                         </span>
                                         <span className="watchlist-picker__meta">
-                                            <strong
-                                                data-freshness={freshness}
-                                            >
+                                            <strong data-freshness={freshness}>
                                                 {formatDecimal(
                                                     market?.latest_price?.price,
                                                 )}

@@ -78,6 +78,33 @@
         color: var(--warning);
     }
 
+    &__research-sync {
+        @apply mx-6 mb-2 flex flex-wrap items-end justify-between gap-4 rounded-xl border p-4;
+        border-color: var(--border);
+        background: color-mix(in srgb, var(--background) 55%, var(--surface));
+
+        label {
+            @apply flex min-w-[12rem] flex-col gap-2 text-xs;
+            color: var(--muted);
+        }
+
+        select {
+            @apply min-h-10 rounded-lg px-3 text-sm;
+            border: 1px solid var(--border);
+            background: var(--background);
+            color: var(--text);
+        }
+
+        p {
+            @apply m-0 max-w-xl text-sm leading-relaxed;
+            color: var(--muted);
+
+            strong {
+                color: var(--text);
+            }
+        }
+    }
+
     &__stats {
         @apply mx-6 grid grid-cols-2 gap-5 border-t py-5;
         border-color: var(--border);
