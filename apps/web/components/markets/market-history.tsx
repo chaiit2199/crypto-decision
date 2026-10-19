@@ -87,7 +87,10 @@ export function MarketHistory({
                 <>
                     <div className="market-chart__summary">
                         <span>
-                            Nến gần nhất · {lastCandle && formatChartTime(lastCandle.open_time)} (UTC+7)
+                            Nến gần nhất ·{" "}
+                            {lastCandle &&
+                                formatChartTime(lastCandle.open_time)}{" "}
+                            (giờ Việt Nam)
                         </span>
                         <span>O {formatDecimal(lastCandle?.open)}</span>
                         <span>H {formatDecimal(lastCandle?.high)}</span>
@@ -96,7 +99,8 @@ export function MarketHistory({
                     </div>
                     <CandleChart candles={data.data} symbol={symbol} snapshotPrice={snapshotPrice} />
                     <p className="market-chart__caption">
-                        {data.data.length} nến đã đóng · Volume theo tài sản gốc · Giờ Việt Nam (UTC+7)
+                        {data.data.length} nến đã đóng · khối lượng theo tài sản
+                        gốc · giờ Việt Nam
                         {data.meta.freshness.status === "stale" && " · Lịch sử chưa cập nhật đến hiện tại"}
                     </p>
                 </>

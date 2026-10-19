@@ -1,4 +1,4 @@
-# Crypto Decision Lab - 200 Trading Skills (Research Candidates)
+# Crypto Decision - 200 Trading Skills (Research Candidates)
 
 **200 distinct structured candidate configurations** = 20 setup archetypes x 10 confirmation variants. They are synthesized technical-analysis hypotheses, NOT 200 independently validated profitable skills. No backtest or historic outcomes have been run. **All evidence.status = unvalidated**.
 

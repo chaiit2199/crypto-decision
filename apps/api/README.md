@@ -1,4 +1,4 @@
-# Crypto Decision Lab API
+# Crypto Decision API
 
 Phoenix REST backend cho Phase 1. Xem [README gốc](../../README.md) để cấu hình PostgreSQL, export môi trường, chạy migration, đồng bộ và kiểm thử.
 

@@ -1,4 +1,4 @@
-# Crypto Decision Lab
+# Crypto Decision
 
 Personal Binance Spot research application: Phoenix/Ecto/PostgreSQL backend in `apps/api`, market monitor in `apps/web`. It does not execute real-money trades.
 
@@ -44,7 +44,6 @@ Trong `.env.jev` ở thư mục gốc, đặt `JEV_ENABLED=true`, `TYPESAFE_API_
 Jev trên dashboard hiện nhận feature giá/chỉ báo từ `Decisions`; chưa tự đọc `apps/api/trading-skills/`. Bộ 200 skills dùng schema riêng, có feature chưa được hỗ trợ và đều `unvalidated`. Trading Knowledge Engine có API thủ công riêng; bật `JEV_ENABLED` không tự tích hợp hay xác thực các strategy này.
 
 Lịch development nằm trong `apps/api/config/dev.exs`: `price_poll_interval_ms: 300_000` (giá mỗi 5 phút), `analysis_interval_seconds: 900` (Jev mỗi 15 phút). Thay hai giá trị này rồi khởi động lại backend. `analysis_interval_seconds` phải là bội số dương của 60. UI nhận chu kỳ từ API. Lịch 24h statistics/metadata/candles giữ riêng; `.env.example` chỉ là file mẫu, không được tự nạp khi chạy.
-
 
 ## Khởi tạo dữ liệu USD và vàng
 

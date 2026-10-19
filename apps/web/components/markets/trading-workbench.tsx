@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 
 import type { Market } from "@/lib/api/types";
 import type { TradingResult, TradingStyle, WorkbenchData } from "@/lib/api/trading-types";
-import { TRADING_STYLE_LABELS } from "@/lib/markets/trading-labels";
+import {
+    SIMULATION_KIND_LABELS,
+    TRADING_STYLE_LABELS,
+} from "@/lib/markets/trading-labels";
 import { priceStatus } from "@/lib/format/market";
 
 import { OrderBookPanel } from "./order-book-panel";
@@ -71,14 +74,14 @@ export function TradingWorkbench({ market, now, refreshVersion }: TradingWorkben
         <section className="trading-workbench" aria-label="Nghiên cứu cơ hội giao dịch">
             <header className="trading-workbench__header">
                 <div>
-                    <h2>Bàn lệnh nghiên cứu</h2>
+                    <h2>Bàn nghiên cứu lệnh</h2>
                     <p>
-                        {market.exchange.toUpperCase()} · {market.symbol} · Spot · {market.quote_asset}
-                        {" · "}Khung giữ khoảng 30 phút đến vài giờ
+                        {market.exchange.toUpperCase()} · {market.symbol} ·{" "}
+                        {market.quote_asset} · giao ngay · không đặt lệnh thật
                     </p>
                 </div>
                 <label>
-                    <span>Phong cách nghiên cứu</span>
+                    <span>Phong cách</span>
                     <select
                         value={style}
                         onChange={(event) => setStyle(event.target.value as TradingStyle)}
@@ -92,7 +95,7 @@ export function TradingWorkbench({ market, now, refreshVersion }: TradingWorkben
 
             {error && <p role="alert">{error}</p>}
             {!current && !error && (
-                <p role="status">Đang kiểm tra dữ liệu, setup và chi phí…</p>
+                <p role="status">Đang kiểm tra dữ liệu, mẫu hình và chi phí…</p>
             )}
 
             {current && (
@@ -124,26 +127,37 @@ export function TradingWorkbench({ market, now, refreshVersion }: TradingWorkben
 
             {current && (
                 <details className="trading-workbench__diagnostics">
-                    <summary>Chỉ báo khung thời gian & lịch sử mô phỏng</summary>
+                    <summary>Chỉ báo theo khung giờ và lịch sử mô phỏng</summary>
                     <WorkbenchIndicators report={current} unavailable={Boolean(error)} />
                     {current.simulations.length > 0 && (
                         <div>
                             <h3>Mô phỏng đã lưu</h3>
                             {current.simulations.map((simulation) => (
                                 <p key={simulation.id}>
-                                    #{simulation.id} · {simulation.kind}
-                                    {simulation.trade_count !== null && ` · ${simulation.trade_count} lệnh`}
+                                    #{simulation.id} ·{" "}
+                                    {SIMULATION_KIND_LABELS[simulation.kind] ??
+                                        simulation.kind}
+                                    {simulation.trade_count !== null &&
+                                        ` · ${simulation.trade_count} lệnh`}
                                 </p>
                             ))}
-                            <p>Kết quả mô phỏng không xác nhận setup hiện tại.</p>
+                            <p>
+                                Kết quả mô phỏng không xác nhận mẫu hình hiện
+                                tại.
+                            </p>
                         </div>
                     )}
                     {current.knowledge_matches.length > 0 && (
                         <p>
-                            Trading Skills:{" "}
-                            {current.knowledge_matches.filter((match) => match.matched).length}
+                            Quy tắc kiến thức:{" "}
+                            {
+                                current.knowledge_matches.filter(
+                                    (match) => match.matched,
+                                ).length
+                            }
                             {" / "}
-                            {current.knowledge_matches.length} khớp 1H · chưa phải bằng chứng lãi.
+                            {current.knowledge_matches.length} khớp khung giờ ·
+                            chưa phải bằng chứng lãi.
                         </p>
                     )}
                 </details>

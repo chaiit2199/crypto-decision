@@ -258,7 +258,7 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
     await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USDT");
     const panel = page.getByRole("region", { name: "Phân tích Jev" });
     await expect(panel).toContainText("Đang chờ lần phân tích Jev đầu tiên");
-    await expect(panel).toContainText("Chỉ báo 1H");
+    await expect(panel).toContainText("Chỉ báo 1 giờ");
     await expect(panel).not.toContainText("Mỗi 15 phút");
     analysis = {
         id: 1,
@@ -303,14 +303,14 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
         risk_result: { execution_allowed: false, mode: "research_only" },
     };
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
-    await expect(panel).toContainText("BUY · Tín hiệu theo dõi mua");
-    await expect(panel).toContainText("Mức tự tin phân loại của mô hình: 70%");
+    await expect(panel).toContainText("Theo dõi mua");
+    await expect(panel).toContainText("Độ tin cậy mô hình: 70%");
     await expect(panel.locator(".market-analysis__signal")).toHaveCSS(
         "color",
         "rgb(116, 199, 163)",
     );
     await expect(panel).toContainText("cần xác định điểm vào, mức dừng lỗ");
-    await expect(panel).toContainText("18:59 17/10/2026 (UTC+7)");
+    await expect(panel).toContainText("18:59 17/10/2026 (giờ Việt Nam)");
     await page
         .getByRole("button", { name: "Xem chi tiết ETH", exact: true })
         .click();
@@ -362,7 +362,7 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
         reason: "authentication_failed",
     };
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
-    await expect(panel).toContainText("Jev từ chối API key (401)");
+    await expect(panel).toContainText("Khóa API Jev bị từ chối");
     await expect(panel.locator(".market-analysis__signal")).toHaveCount(0);
     analysis = {
         ...analysis,
@@ -370,7 +370,7 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
         reason: "insufficient_candles",
     };
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
-    await expect(panel).toContainText("Cần ít nhất 300 nến 1H");
+    await expect(panel).toContainText("Cần ít nhất 300 nến giờ");
     await page
         .getByRole("button", { name: "Xem chi tiết XAU", exact: true })
         .click();
@@ -398,7 +398,7 @@ test("selecting symbols and timeframes renders charts and unavailable states", a
         page.locator(".market-chart__canvas canvas").first(),
     ).toBeVisible();
     await expect(page.locator(".market-chart__summary")).toContainText(
-        "09:00 15/10/2026 (UTC+7)",
+        "09:00 15/10/2026 (giờ Việt Nam)",
     );
     await page
         .getByRole("button", { name: "Xem chi tiết ETH", exact: true })

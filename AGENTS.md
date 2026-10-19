@@ -1,6 +1,6 @@
-# Crypto Decision Lab - Quy tắc phát triển
+# Crypto Decision - Quy tắc phát triển
 
-Áp dụng cho toàn bộ monorepo Crypto Decision Lab. Đây là ứng dụng cá nhân hỗ trợ nghiên cứu và ra quyết định giao dịch tiền mã hóa, không phải SaaS đa người thuê. Code mới và code được chỉnh sửa phải tuân theo các quy tắc dưới đây. Không format hoặc refactor hàng loạt file ngoài phạm vi công việc.
+Áp dụng cho toàn bộ monorepo Crypto Decision. Đây là ứng dụng cá nhân hỗ trợ nghiên cứu và ra quyết định giao dịch tiền mã hóa, không phải SaaS đa người thuê. Code mới và code được chỉnh sửa phải tuân theo các quy tắc dưới đây. Không format hoặc refactor hàng loạt file ngoài phạm vi công việc.
 
 ## A. Phạm vi và thứ tự triển khai
 
@@ -58,12 +58,12 @@ AGENTS.md
 
 Danh mục nghiên cứu hiện tại (20 asset, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync:
 
-| Nhóm                   | Asset                                |
-| ---------------------- | ------------------------------------ |
-| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER       |
-| Tiềm năng cao          | TIA, ONDO, PYTH, EIGEN, FET, NEAR    |
-| Vốn hóa vừa            | TAO, IMX, INJ, SEI                   |
-| Mở rộng                | IO, BONK, WIF, WLD                   |
+| Nhóm                   | Asset                             |
+| ---------------------- | --------------------------------- |
+| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER    |
+| Tiềm năng cao          | TIA, ONDO, PYTH, EIGEN, FET, NEAR |
+| Vốn hóa vừa            | TAO, IMX, INJ, SEI                |
+| Mở rộng                | IO, BONK, WIF, WLD                |
 
 Seed upsert danh mục này và `enabled=false` các asset đã bị gỡ khỏi `@groups`. Không xóa lịch sử nến/phân tích. Cặp Spot USDT thực tế do `exchangeInfo` xác minh; mã không có trên Binance vẫn giữ trong danh mục với trạng thái không khả dụng.
 

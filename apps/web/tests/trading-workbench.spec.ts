@@ -56,7 +56,7 @@ test("workbench explains missing data and sends the selected market's hypothetic
             market: "spot",
             style: params.get("style"),
             as_of: now,
-            valid_until: new Date(Date.now() + 90_000).toISOString(),
+            valid_until: new Date(Date.now() + 360_000).toISOString(),
             configuration_version: "synthetic",
             timeframes: { trend: params.get("style") === "scalping" ? "1h" : "4h", setup: "15m", entry: "5m" },
             frames: { "5m": { status: "no_data", reason: "insufficient_candles", features: {} } },
@@ -65,6 +65,8 @@ test("workbench explains missing data and sends the selected market's hypothetic
             setup: null,
             setup_quality: "UNCONFIRMED",
             ai_signal: "NO_DATA",
+            ai_status: "missing",
+            ai_reason: "analysis_not_run",
             ai_analyzed_at: null,
             direction_assessment: null,
             holding_horizon: null,
@@ -93,10 +95,11 @@ test("workbench explains missing data and sends the selected market's hypothetic
     await page.goto("/");
     const workbench = page.getByRole("region", { name: "Nghiên cứu cơ hội giao dịch", exact: true });
     await expect(workbench).toContainText("Chưa đồng bộ sổ lệnh");
-    await expect(workbench).toContainText("Chưa đủ dữ liệu đánh giá");
-    await expect(workbench.getByRole("region", { name: "Phiếu lệnh nghiên cứu" })).toContainText("Thiếu điều kiện");
+    await expect(workbench).toContainText("Chưa đủ dữ liệu");
+    await expect(workbench.getByRole("region", { name: "Phiếu lệnh nghiên cứu" })).toContainText("Điều kiện còn thiếu");
+    await expect(workbench).toContainText("Chưa có lần phân tích nào");
     await expect(workbench).toContainText("Chưa phù hợp giữ lệnh");
-    await page.getByLabel("Phong cách nghiên cứu").selectOption("scalping");
+    await page.getByLabel("Phong cách").selectOption("scalping");
     await expect(page.getByRole("button", { name: "5M", exact: true })).toBeVisible();
     const planner = page.getByRole("region", { name: "Mô phỏng quản trị lệnh", exact: true });
     await planner.locator('input[name="entry"]').fill("100");
@@ -143,7 +146,7 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
         const data = {
             symbol: "BTCUSD", exchange: "coinbase", quote_asset: "USD", market: "spot",
             style: params.get("style"), as_of: now,
-            valid_until: new Date(Date.now() + 90_000).toISOString(), configuration_version: "synthetic",
+            valid_until: new Date(Date.now() + 360_000).toISOString(), configuration_version: "synthetic",
             timeframes: { trend: params.get("style") === "scalping" ? "1h" : "4h", setup: "15m", entry: "5m" },
             frames: {
                 "4h": { status: "no_data", reason: "insufficient_candles", features: {} },
@@ -157,7 +160,8 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
             },
             liquidity: { status: "unsupported", reason: "LIQUIDITY_SOURCE_UNSUPPORTED" },
             market_regime: "UNKNOWN", setup: null, setup_quality: "UNCONFIRMED",
-            ai_signal: "NO_DATA", ai_analyzed_at: null, direction_assessment: null,
+            ai_signal: "NO_DATA", ai_status: "disabled", ai_reason: "jev_disabled",
+            ai_analyzed_at: null, direction_assessment: null,
             holding_horizon: null, horizon_deterministic: "UNSUITABLE",
             uncertainty: "UNCALIBRATED", expected_move: null, profit_probability: null,
             strategy_validation: "UNVALIDATED", execution_allowed: false,
@@ -182,18 +186,19 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
     await page.goto("/");
     await page.getByLabel("Đồng tiền của cặp giao dịch").selectOption("USD");
     const workbench = page.getByRole("region", { name: "Nghiên cứu cơ hội giao dịch", exact: true });
-    await workbench.getByText("Chỉ báo khung thời gian & lịch sử mô phỏng", { exact: true }).click();
+    await expect(workbench).toContainText("Phân tích Jev đang tắt");
+    await workbench.getByText("Chỉ báo theo khung giờ và lịch sử mô phỏng", { exact: true }).click();
     const indicators = page.getByRole("region", { name: "Chỉ báo kỹ thuật theo khung", exact: true });
     await expect(indicators.getByLabel("Khung chỉ báo")).toHaveValue("1h");
     await expect(indicators.getByText("58.5", { exact: true })).toBeVisible();
-    await expect(indicators).toContainText("Coinbase hiện chỉ đồng bộ nến 1H");
+    await expect(indicators).toContainText("Coinbase hiện chỉ đồng bộ nến 1 giờ");
     await indicators.getByLabel("Khung chỉ báo").selectOption("5m");
-    await expect(indicators.getByRole("status")).toContainText("Chưa có bộ đồng bộ nến Coinbase");
+    await expect(indicators.getByRole("status")).toContainText("Coinbase chưa đồng bộ nến khung này");
     await indicators.getByLabel("Khung chỉ báo").selectOption("1h");
-    await indicators.getByText("Xem thêm chỉ báo xu hướng & khối lượng", { exact: true }).click();
-    await expect(indicators.getByText("MACD Histogram", { exact: true })).toBeVisible();
+    await indicators.getByText("Xem thêm chỉ báo xu hướng và khối lượng", { exact: true }).click();
+    await expect(indicators.getByText("Cột MACD", { exact: true })).toBeVisible();
     await expect(indicators.getByText("Chưa có dữ liệu", { exact: true })).toHaveCount(2);
-    await indicators.getByText("Xem thêm chỉ báo xu hướng & khối lượng", { exact: true }).click();
+    await indicators.getByText("Xem thêm chỉ báo xu hướng và khối lượng", { exact: true }).click();
 
     const planner = page.getByRole("region", { name: "Mô phỏng quản trị lệnh", exact: true });
     await expect(planner.locator('input[name="fee_percent"]')).toBeHidden();
@@ -202,11 +207,11 @@ test("Coinbase shows hourly indicators and keeps the simple calculator usable wi
     await expect(planner.locator('input[name="entry"]')).toHaveValue("100");
     await planner.locator('input[name="stop_loss"]').fill("99");
     await planner.locator('input[name="take_profit"]').fill("102");
-    await page.getByLabel("Phong cách nghiên cứu").selectOption("scalping");
+    await page.getByLabel("Phong cách").selectOption("scalping");
     await expect(planner.locator('input[name="stop_loss"]')).toHaveValue("99");
-    await planner.locator("summary").filter({ hasText: "Phí & trượt giá" }).click();
+    await planner.locator("summary").filter({ hasText: "Phí và trượt giá" }).click();
     await planner.locator('input[name="fee_percent"]').fill("0.2");
-    await planner.locator("summary").filter({ hasText: "Phí & trượt giá" }).click();
+    await planner.locator("summary").filter({ hasText: "Phí và trượt giá" }).click();
     await planner.getByRole("button", { name: "Tính mô phỏng", exact: true }).click();
     await expect(planner.getByText("Kết quả mô phỏng", { exact: true })).toBeVisible();
     expect(posted?.symbol).toBe("BTCUSD");

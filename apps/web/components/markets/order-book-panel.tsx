@@ -8,53 +8,48 @@ type OrderBookPanelProps = {
 
 export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
     return (
-        <section className="order-book-panel" aria-label="Phân tích sổ lệnh">
+        <section className="order-book-panel" aria-label="Sổ lệnh">
             <header>
-                <h3>Sổ lệnh hiển thị</h3>
+                <h3>Sổ lệnh</h3>
                 <p>
-                    Bid/ask resting orders từ một ảnh chụp depth. Không phải số
-                    người mua/bán và không phải order block trên nến.
+                    Ảnh chụp lệnh chờ mua/bán tại một thời điểm. Không đếm số
+                    người và không phải vùng hỗ trợ/kháng cự trên nến.
                 </p>
             </header>
 
             {liquidity.status === "unsupported" && (
-                <p>
-                    Nguồn này chưa hỗ trợ sổ lệnh Binance. Không mượn depth từ
-                    sàn khác.
-                </p>
+                <p>Nguồn này chưa có sổ lệnh. Không dùng sổ lệnh từ sàn khác.</p>
             )}
-            {liquidity.status === "missing" && <p>Chưa đồng bộ sổ lệnh.</p>}
+            {liquidity.status === "missing" && <p>Chưa có sổ lệnh.</p>}
             {liquidity.status === "stale" && (
-                <p>
-                    Sổ lệnh đã cũ; số liệu chỉ để tham khảo, không dùng để vào
-                    lệnh.
-                </p>
+                <p>Sổ lệnh đã cũ; chỉ tham khảo, không dùng để vào lệnh.</p>
             )}
 
             {["fresh", "stale"].includes(liquidity.status) && (
                 <>
                     <dl className="trading-workbench__metrics">
                         <div>
-                            <dt>Best Bid / Ask</dt>
+                            <dt>Mua / bán tốt nhất</dt>
                             <dd>
                                 {formatIndicator(liquidity.bid)} /{" "}
                                 {formatIndicator(liquidity.ask)}
                             </dd>
                         </div>
                         <div>
-                            <dt>Mid</dt>
+                            <dt>Giá giữa</dt>
                             <dd>{formatIndicator(liquidity.mid_price)}</dd>
                         </div>
                         <div>
-                            <dt>Spread</dt>
+                            <dt>Chênh mua/bán</dt>
                             <dd>
-                                {formatIndicator(liquidity.spread_bps)} bps
+                                {formatIndicator(liquidity.spread_bps)} điểm cơ
+                                bản
                                 {" · "}
                                 {formatIndicator(liquidity.spread_percent)}%
                             </dd>
                         </div>
                         <div>
-                            <dt>Depth 100 mức · {quoteAsset}</dt>
+                            <dt>Độ sâu 100 mức · {quoteAsset}</dt>
                             <dd>
                                 {formatIndicator(liquidity.bid_depth)}
                                 {" / "}
@@ -62,37 +57,32 @@ export function OrderBookPanel({ liquidity, quoteAsset }: OrderBookPanelProps) {
                             </dd>
                         </div>
                         <div>
-                            <dt>Imbalance toàn sổ</dt>
+                            <dt>Lệch mua–bán</dt>
                             <dd>{formatIndicator(liquidity.imbalance)}</dd>
                             <dd>
-                                Không đồng nghĩa giá sẽ tăng khi imbalance
-                                dương.
+                                Lệch dương không có nghĩa giá sẽ tăng.
                             </dd>
                         </div>
                         <div>
-                            <dt>Ảnh chụp</dt>
+                            <dt>Thời điểm chụp</dt>
                             <dd>
                                 {liquidity.fetched_at
-                                    ? `${formatTime(liquidity.fetched_at)} · UTC+7`
-                                    : "-"}
+                                    ? `${formatTime(liquidity.fetched_at)} · giờ Việt Nam`
+                                    : "—"}
                             </dd>
                         </div>
                     </dl>
 
                     {liquidity.bands && liquidity.bands.length > 0 && (
                         <div className="order-book-panel__bands">
-                            <h4>Thanh khoản theo khoảng cách mid</h4>
-                            <p>
-                                Tường bid/ask nhìn thấy không được gắn nhãn
-                                support/resistance.
-                            </p>
+                            <h4>Thanh khoản theo khoảng cách giá giữa</h4>
                             <table>
                                 <thead>
                                     <tr>
-                                        <th scope="col">Band</th>
-                                        <th scope="col">Bid {quoteAsset}</th>
-                                        <th scope="col">Ask {quoteAsset}</th>
-                                        <th scope="col">Imbalance</th>
+                                        <th scope="col">Khoảng</th>
+                                        <th scope="col">Mua · {quoteAsset}</th>
+                                        <th scope="col">Bán · {quoteAsset}</th>
+                                        <th scope="col">Lệch</th>
                                     </tr>
                                 </thead>
                                 <tbody>

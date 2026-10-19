@@ -6,9 +6,7 @@
     "description": "Tests a below-average range hypothesis; no claim price must revert.",
     "action": "BUY",
     "market": "binance_spot_usdt",
-    "regimes": [
-        "range"
-    ],
+    "regimes": ["range"],
     "timeframe": "1h",
     "feature_contract": "hourly-v1",
     "entry_conditions": [
@@ -69,7 +67,7 @@
     },
     "provenance": {
         "kind": "research_hypothesis",
-        "author": "Crypto Decision Lab example library",
+        "author": "Crypto Decision example library",
         "source": "Repository-authored illustrative hypothesis; no empirical source or performance claim.",
         "created_at": "2026-10-18T00:00:00Z",
         "rationale": "Tests a below-average range hypothesis; no claim price must revert.",

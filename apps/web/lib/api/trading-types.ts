@@ -95,6 +95,8 @@ export const workbenchSchema = z.object({
     setup: z.string().nullable(),
     setup_quality: z.enum(["CONFIRMED", "UNCONFIRMED"]),
     ai_signal: z.enum(["BUY_CANDIDATE", "EXIT_CANDIDATE", "WAIT", "NO_DATA"]),
+    ai_status: z.string().nullable().optional(),
+    ai_reason: z.string().nullable().optional(),
     ai_analyzed_at: timestamp.nullable(),
     direction_assessment: z.string().nullable(),
     holding_horizon: z.enum(["SCALP", "INTRADAY", "SWING", "UNSUITABLE"]).nullable().optional(),

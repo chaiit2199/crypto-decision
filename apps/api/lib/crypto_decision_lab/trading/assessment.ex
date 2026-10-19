@@ -1,6 +1,7 @@
 defmodule CryptoDecisionLab.Trading.Assessment do
   @moduledoc "Versioned deterministic setup and risk gates, separate from Jev classification."
   alias CryptoDecisionLab.Trading.Plan
+  alias CryptoDecisionLab.MarketData
   alias CryptoDecisionLab.MarketData.{Liquidity, SnapshotTime}
   alias Decimal, as: D
 
@@ -32,9 +33,11 @@ defmodule CryptoDecisionLab.Trading.Assessment do
     plan = build_plan(entry["features"], liquidity, config)
     depth = depth_cost(plan, liquidity)
     price = market.latest_price
+    price_age = MarketData.price_max_age_seconds()
 
     price_fresh =
-      not is_nil(price) and SnapshotTime.fresh?(price.data_at || price.fetched_at, now, 90)
+      not is_nil(price) and
+        SnapshotTime.fresh?(price.data_at || price.fetched_at, now, price_age)
 
     ai = classification(market, now)
     horizon_deterministic = horizon_from_frames(series, config[:max_atr_percent])
@@ -84,6 +87,8 @@ defmodule CryptoDecisionLab.Trading.Assessment do
       "setup" => setup_name,
       "setup_quality" => if(confirmed, do: "CONFIRMED", else: "UNCONFIRMED"),
       "ai_signal" => ai["signal"],
+      "ai_status" => ai["status"],
+      "ai_reason" => ai["reason"],
       "direction_assessment" => ai["direction"],
       "holding_horizon" => ai["holding_horizon"],
       "horizon_deterministic" => horizon_deterministic,
@@ -241,8 +246,30 @@ defmodule CryptoDecisionLab.Trading.Assessment do
 
   defp depth_cost(_, _), do: nil
 
+  defp classification(%{analysis_enabled: false}, _),
+    do: %{
+      "signal" => "NO_DATA",
+      "status" => "disabled",
+      "reason" => "jev_disabled",
+      "direction" => nil,
+      "holding_horizon" => nil,
+      "analyzed_at" => nil
+    }
+
+  defp classification(%{analysis_enabled: true, analysis: nil}, _),
+    do: %{
+      "signal" => "NO_DATA",
+      "status" => "missing",
+      "reason" => "analysis_not_run",
+      "direction" => nil,
+      "holding_horizon" => nil,
+      "analyzed_at" => nil
+    }
+
   defp classification(%{analysis_enabled: true, analysis: analysis}, now) when is_map(analysis) do
-    if analysis.status == "ready" and DateTime.compare(now, analysis.valid_until) == :lt do
+    fresh = DateTime.compare(now, analysis.valid_until) == :lt
+
+    if analysis.status == "ready" and fresh do
       signal =
         %{
           "BUY" => "BUY_CANDIDATE",
@@ -253,6 +280,8 @@ defmodule CryptoDecisionLab.Trading.Assessment do
 
       %{
         "signal" => signal,
+        "status" => "ready",
+        "reason" => nil,
         "direction" => analysis.answers["trend"]["choice"],
         "holding_horizon" => get_in(analysis.answers, ["holding_horizon", "choice"]),
         "analyzed_at" => DateTime.to_iso8601(analysis.analyzed_at)
@@ -260,9 +289,12 @@ defmodule CryptoDecisionLab.Trading.Assessment do
     else
       %{
         "signal" => "NO_DATA",
+        "status" => analysis.status,
+        "reason" => analysis.reason || if(fresh, do: analysis.status, else: "analysis_expired"),
         "direction" => nil,
         "holding_horizon" => nil,
-        "analyzed_at" => nil
+        "analyzed_at" =>
+          if(analysis.analyzed_at, do: DateTime.to_iso8601(analysis.analyzed_at), else: nil)
       }
     end
   end
@@ -270,6 +302,8 @@ defmodule CryptoDecisionLab.Trading.Assessment do
   defp classification(_, _),
     do: %{
       "signal" => "NO_DATA",
+      "status" => "missing",
+      "reason" => "analysis_unavailable",
       "direction" => nil,
       "holding_horizon" => nil,
       "analyzed_at" => nil

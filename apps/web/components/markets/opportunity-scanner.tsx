@@ -12,6 +12,7 @@ import {
     ELIGIBILITY_LABELS,
     REGIME_LABELS,
     RISK_FLAG_LABELS,
+    SETUP_LABELS,
     TRADING_STYLE_LABELS,
 } from "@/lib/markets/trading-labels";
 
@@ -86,10 +87,10 @@ export function OpportunityScanner({
         >
             <header className="trading-workbench__header">
                 <div>
-                    <h2>Trading Opportunity Scanner</h2>
+                    <h2>Quét cơ hội</h2>
                     <p>
-                        Xếp theo điều kiện kỹ thuật và R:R sau phí ·{" "}
-                        {exchange.toUpperCase()} Spot
+                        Xếp theo điều kiện kỹ thuật và tỷ lệ lãi/rủi ro sau phí ·{" "}
+                        {exchange.toUpperCase()} giao ngay
                     </p>
                 </div>
                 <label>
@@ -127,20 +128,23 @@ export function OpportunityScanner({
                         <thead>
                             <tr>
                                 <th scope="col">Cặp</th>
-                                <th scope="col">Setup</th>
+                                <th scope="col">Mẫu hình</th>
                                 <th scope="col">Xu hướng</th>
-                                <th scope="col">Volume tương đối</th>
-                                <th scope="col">R:R sau phí</th>
-                                <th scope="col">
-                                    Trạng thái / điều kiện còn thiếu
-                                </th>
+                                <th scope="col">Khối lượng tương đối</th>
+                                <th scope="col">Tỷ lệ lãi/rủi ro</th>
+                                <th scope="col">Trạng thái</th>
                             </tr>
                         </thead>
                         <tbody>
                             {currentRows.map((row) => (
                                 <tr key={`${row.exchange}:${row.symbol}`}>
                                     <th scope="row">{row.symbol}</th>
-                                    <td>{row.setup ?? "-"}</td>
+                                    <td>
+                                        {row.setup
+                                            ? (SETUP_LABELS[row.setup] ??
+                                              row.setup)
+                                            : "—"}
+                                    </td>
                                     <td>
                                         {REGIME_LABELS[row.market_regime]} ·{" "}
                                         {row.timeframes.trend.toUpperCase()}

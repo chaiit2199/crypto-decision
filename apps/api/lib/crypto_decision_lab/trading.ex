@@ -110,16 +110,18 @@ defmodule CryptoDecisionLab.Trading do
   defp valid_until(market, liquidity, now) do
     price = market.latest_price
     price_at = if price, do: price.data_at || price.fetched_at, else: now
+    price_expiry = DateTime.add(price_at, MarketData.price_max_age_seconds())
 
-    book_at =
-      case DateTime.from_iso8601(liquidity["fetched_at"] || "") do
-        {:ok, at, 0} -> at
-        _ -> now
+    book_expiry =
+      case {liquidity["status"], DateTime.from_iso8601(liquidity["fetched_at"] || "")} do
+        {"fresh", {:ok, at, 0}} -> DateTime.add(at, 90)
+        {"stale", {:ok, at, 0}} -> DateTime.add(at, 90)
+        _ -> price_expiry
       end
 
-    [price_at, book_at, now]
+    [price_expiry, book_expiry]
     |> Enum.min_by(&DateTime.to_unix(&1, :microsecond))
-    |> DateTime.add(90)
+    |> then(fn expiry -> if DateTime.compare(expiry, now) == :lt, do: now, else: expiry end)
     |> DateTime.to_iso8601()
   end
 

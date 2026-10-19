@@ -48,7 +48,8 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
                     </strong>
                     <span> {quoteAsset}</span>
                     <p>
-                        {formatTime(market?.latest_price?.data_at ?? market?.latest_price?.fetched_at)} · UTC+7
+                        {formatTime(market?.latest_price?.data_at ?? market?.latest_price?.fetched_at)}{" "}
+                        · giờ Việt Nam
                         {freshness === "stale" && " · Dữ liệu giá cũ"}
                         {freshness === "missing" && " · Chưa có giá"}
                         {!asset.enabled && " · Tài sản đã tắt đồng bộ"}
@@ -127,7 +128,7 @@ export function MarketDetails({ asset, quoteAsset, now, refreshIntervalMs, refre
                     )}
                 </div>
                 <details className="market-details__analysis">
-                    <summary>Phân tích Jev 1H (bối cảnh · không phải tín hiệu vào lệnh)</summary>
+                    <summary>Phân tích Jev khung 1 giờ</summary>
                     <MarketAnalysis market={market} now={now} />
                 </details>
             </div>

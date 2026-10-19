@@ -125,7 +125,7 @@ export function MarketMonitor({
     let connectionLabel = "Đang kết nối";
 
     if (error) {
-        connectionLabel = "Mất kết nối API";
+        connectionLabel = "Mất kết nối máy chủ";
     } else if (data && !data.status.enabled) {
         connectionLabel = "Đồng bộ đang tắt";
     } else if (blocked) {
@@ -158,7 +158,7 @@ export function MarketMonitor({
                 <Link
                     className="market-monitor__brand"
                     href="/"
-                    aria-label="Crypto Decision Lab, trang chủ"
+                    aria-label="Crypto Decision, trang chủ"
                 >
                     <span className="market-monitor__logo" aria-hidden="true">
                         C<span>↗</span>
@@ -166,7 +166,7 @@ export function MarketMonitor({
                     <span>
                         CRYPTO
                         <span className="market-monitor__brand-sub">
-                            DECISION LAB
+                            DECISION
                         </span>
                     </span>
                 </Link>
@@ -181,7 +181,7 @@ export function MarketMonitor({
             >
                 <div>
                     <p className="market-monitor__eyebrow">
-                        BÀN LỆNH NGHIÊN CỨU · BINANCE SPOT
+                        BÀN NGHIÊN CỨU · BINANCE GIAO NGAY
                     </p>
                     <h1 id="market-title">
                         Quyết định có kỷ luật<span>.</span>
@@ -214,8 +214,8 @@ export function MarketMonitor({
             )}
             {data && !data.status.enabled && (
                 <p className="market-monitor__notice">
-                    Backend đang tắt đồng bộ tự động. Bật đồng bộ và khởi động
-                    lại API để nhận giá mới.
+                    Máy chủ đang tắt đồng bộ tự động. Bật đồng bộ và khởi động
+                    lại dịch vụ để nhận giá mới.
                 </p>
             )}
             {blocked && (
@@ -275,12 +275,12 @@ export function MarketMonitor({
                     <p className="market-monitor__clock">
                         {formatTime(collector?.prices_at)}
                     </p>
-                    <span>Giờ Việt Nam · UTC+7</span>
+                    <span>Giờ Việt Nam</span>
                 </article>
             </section>
 
             <div className="market-monitor__market-selection">
-                <h2>Không gian phân tích</h2>
+                <h2>Khu vực phân tích</h2>
                 <label className="market-monitor__quote">
                     <span>Thị trường</span>
                     <select
@@ -429,9 +429,10 @@ export function MarketMonitor({
                 </footer>
             </section>
             <footer className="market-monitor__footer">
-                <span>CRYPTO DECISION LAB</span>
+                <span>CRYPTO DECISION</span>
                 <span>
-                    Nguồn: Coinbase (USD) · Binance (USDT) · Gold API (XAU/USD)
+                    Nguồn: Coinbase (USD) · Binance (USDT) · giá vàng tham chiếu
+                    (XAU/USD)
                 </span>
             </footer>
         </main>

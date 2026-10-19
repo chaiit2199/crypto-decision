@@ -26,13 +26,13 @@ const OTHER_INDICATORS = [
     { key: "ema50", name: "EMA50", description: "Giá trung bình có trọng số của 50 nến, ít nhạy hơn EMA20." },
     { key: "ema200", name: "EMA200", description: "Giá trung bình có trọng số của 200 nến, làm mốc xu hướng dài hơn." },
     { key: "macd", name: "MACD", description: "Chênh lệch EMA12 và EMA26, dùng quan sát động lượng giá." },
-    { key: "macd_signal", name: "MACD Signal", description: "EMA9 của MACD, làm đường tham chiếu cho động lượng." },
-    { key: "macd_histogram", name: "MACD Histogram", description: "MACD trừ Signal; dương khi MACD ở trên đường Signal." },
+    { key: "macd_signal", name: "Đường tín hiệu MACD", description: "Trung bình 9 kỳ của MACD, làm mốc so sánh động lượng." },
+    { key: "macd_histogram", name: "Cột MACD", description: "MACD trừ đường tín hiệu; dương khi MACD nằm trên đường tín hiệu." },
     { key: "atr14", name: "ATR14", description: "Biên độ biến động trung bình 14 nến, theo đơn vị giá của cặp." },
     { key: "adx14", name: "ADX14", description: "Sức mạnh xu hướng trên thang 0–100, không cho biết hướng tăng hay giảm." },
     { key: "relative_volume20", name: "Khối lượng tương đối", description: "Khối lượng nến cuối chia trung bình 20 nến trước; trên 1 là cao hơn trung bình." },
-    { key: "vwap", name: "VWAP phiên UTC", description: "Giá bình quân theo khối lượng từ 00:00 UTC; cần đủ nến và khối lượng định giá." },
-    { key: "volume_delta", name: "Volume Delta", description: "Khối lượng mua chủ động trừ bán chủ động; cần dữ liệu taker từ nguồn." },
+    { key: "vwap", name: "Giá TB theo khối lượng (UTC)", description: "Giá bình quân theo khối lượng từ 00:00 UTC; cần đủ nến và khối lượng." },
+    { key: "volume_delta", name: "Chênh lệch khối lượng", description: "Khối lượng mua chủ động trừ bán chủ động; cần dữ liệu từ nguồn." },
 ] as const;
 
 const FRAME_REASONS: Record<string, string> = {
@@ -74,7 +74,10 @@ export function WorkbenchIndicators({ report, unavailable }: WorkbenchIndicators
             <header className="trading-workbench__header">
                 <div>
                     <h3>Chỉ báo kỹ thuật</h3>
-                    <p>{report.symbol} · {report.quote_asset} · Tính từ nến đã đóng, độc lập với Jev.</p>
+                    <p>
+                        {report.symbol} · {report.quote_asset} · tính từ nến đã
+                        đóng, độc lập với Jev
+                    </p>
                 </div>
                 {timeframe && (
                     <label>
@@ -90,27 +93,49 @@ export function WorkbenchIndicators({ report, unavailable }: WorkbenchIndicators
                 )}
             </header>
             {report.exchange === "coinbase" && (
-                <p>Coinbase hiện chỉ đồng bộ nến 1H; chỉ báo 5M/15M chưa được hỗ trợ.</p>
+                <p>
+                    Coinbase hiện chỉ đồng bộ nến 1 giờ; khung 5 phút / 15 phút
+                    chưa hỗ trợ.
+                </p>
             )}
-            {unavailable && <p role="status">Báo cáo chưa cập nhật; các giá trị dưới đây là lần tính trước.</p>}
-            {referenceOnly && <p>Khung {timeframe.toUpperCase()} để tham khảo, chưa đủ đánh giá phong cách đang chọn.</p>}
-            {!frame && <p role="status">Chưa nhận được dữ liệu chỉ báo cho thị trường này.</p>}
+            {unavailable && (
+                <p role="status">
+                    Báo cáo chưa cập nhật; các giá trị dưới đây là lần tính
+                    trước.
+                </p>
+            )}
+            {referenceOnly && (
+                <p>
+                    Khung {timeframe.toUpperCase()} chỉ để tham khảo, chưa đủ
+                    đánh giá phong cách đang chọn.
+                </p>
+            )}
+            {!frame && (
+                <p role="status">
+                    Chưa nhận được dữ liệu chỉ báo cho thị trường này.
+                </p>
+            )}
             {frame && frame.status !== "ready" && (
                 <p className="trading-workbench__status" role="status">
                     {unsupported
-                        ? "Chưa có bộ đồng bộ nến Coinbase cho khung này. Chọn 1H để xem dữ liệu hiện có."
-                        : FRAME_REASONS[frame.reason ?? ""] ?? "Chưa đủ nến hợp lệ để tính chỉ báo ở khung này."}
+                        ? "Coinbase chưa đồng bộ nến khung này. Chọn 1H để xem dữ liệu hiện có."
+                        : FRAME_REASONS[frame.reason ?? ""] ??
+                          "Chưa đủ nến hợp lệ để tính chỉ báo ở khung này."}
                 </p>
             )}
             {frame?.status === "ready" && (
                 <>
                     <IndicatorValues frame={frame} />
                     <details className="trading-workbench__frame">
-                        <summary>Xem thêm chỉ báo xu hướng & khối lượng</summary>
+                        <summary>Xem thêm chỉ báo xu hướng và khối lượng</summary>
                         <IndicatorValues frame={frame} expanded />
                     </details>
                     {frame.features.last_close_time && (
-                        <p>Nến nguồn {timeframe?.toUpperCase()} đóng lúc {formatTime(frame.features.last_close_time)} (UTC+7).</p>
+                        <p>
+                            Nến {timeframe?.toUpperCase()} đóng lúc{" "}
+                            {formatTime(frame.features.last_close_time)} (giờ
+                            Việt Nam).
+                        </p>
                     )}
                 </>
             )}

@@ -1,4 +1,4 @@
-# Crypto Decision Lab - Phase 1
+# Crypto Decision - Phase 1
 
 This document records the Phase 1 foundation. Later user-requested extensions are documented in [Jev integration](jev-integration.md) and [Trading Knowledge Engine](trading-knowledge-engine.md).
 

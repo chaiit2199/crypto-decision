@@ -158,7 +158,7 @@ export function CandleChart({ candles, symbol, snapshotPrice }: CandleChartProps
             ref={containerRef}
             className="market-chart__canvas"
             role="img"
-            aria-label={`Biểu đồ nến và khối lượng ${symbol}, giờ Việt Nam (UTC+7)`}
+            aria-label={`Biểu đồ nến và khối lượng ${symbol}, giờ Việt Nam`}
         />
     );
 }

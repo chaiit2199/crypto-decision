@@ -197,7 +197,7 @@ export function TradePlanner({
                 <fieldset disabled={isCalculating}>
                     <legend className="sr-only">Thông số mô phỏng</legend>
                     <fieldset className="trade-planner__group">
-                        <legend>1. Vốn & rủi ro</legend>
+                        <legend>1. Vốn và rủi ro</legend>
                         <div className="trade-planner__capital">
                             <PlannerField
                                 name="equity"
@@ -266,8 +266,8 @@ export function TradePlanner({
                         }}
                     >
                         <summary>
-                            Phí & trượt giá · {input.fee_percent || "-"}% +{" "}
-                            {input.slippage_percent || "-"}% mỗi chiều
+                            Phí và trượt giá · {input.fee_percent || "—"}% +{" "}
+                            {input.slippage_percent || "—"}% mỗi chiều
                         </summary>
                         <p>
                             Giá trị mặc định chỉ là giả định. Điều chỉnh theo
@@ -296,7 +296,7 @@ export function TradePlanner({
                         </button>
                         {suggestedPlan && (
                             <button type="button" onClick={handleUseScenario}>
-                                Điền kịch bản ATR tham khảo
+                                Điền mức ATR tham khảo
                             </button>
                         )}
                     </div>
@@ -311,8 +311,8 @@ export function TradePlanner({
                 <PlanSummary plan={result.data} quoteAsset={quoteAsset} />
             )}
             <p>
-                Chỉ mô phỏng mua Spot, không đặt lệnh. Lỗ thực tế có thể lớn hơn
-                khi giá nhảy hoặc thiếu thanh khoản.
+                Chỉ mô phỏng mua giao ngay, không đặt lệnh thật. Lỗ thực tế có
+                thể lớn hơn khi giá nhảy hoặc thiếu thanh khoản.
             </p>
         </section>
     );
