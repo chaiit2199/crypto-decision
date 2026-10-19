@@ -12,14 +12,9 @@ import {
 } from "@/lib/format/market";
 import { selectedMarket } from "@/lib/markets/selected-market";
 import type { QuoteAsset } from "@/lib/markets/selected-market";
-import {
-    researchStanceLabel,
-    resolveResearchStance,
-    type ResearchStance,
-} from "@/lib/markets/indicator-readings";
+import { resolveResearchStance } from "@/lib/markets/indicator-readings";
 import {
     chartTimeframeForStyle,
-    stanceSyncNote,
     styleForChartTimeframe,
 } from "@/lib/markets/research-sync";
 
@@ -39,12 +34,6 @@ type MarketDetailsProps = {
 
 const TIMEFRAMES: Timeframe[] = ["5m", "15m", "1h", "4h", "1d"];
 
-const STANCE_OPTIONS: { value: ResearchStance; label: string }[] = [
-    { value: "auto", label: "Tự động theo Jev" },
-    { value: "long", label: "Long · mua / giữ" },
-    { value: "short", label: "Short · bán / giảm" },
-];
-
 export function MarketDetails({
     asset,
     quoteAsset,
@@ -54,7 +43,6 @@ export function MarketDetails({
 }: MarketDetailsProps) {
     const [style, setStyle] = useState<TradingStyle>("intraday");
     const [timeframe, setTimeframe] = useState<Timeframe>("1h");
-    const [stance, setStance] = useState<ResearchStance>("auto");
     const market = selectedMarket(asset, quoteAsset);
     const stats = market?.ticker_stats;
     const freshness = priceStatus(market, now);
@@ -69,8 +57,9 @@ export function MarketDetails({
         analysis?.status === "ready" &&
         analysis.freshness === "fresh" &&
         now < Date.parse(analysis.valid_until);
-    const jevSignal = analysisActive ? analysis?.signal : null;
-    const resolvedStance = resolveResearchStance(stance, jevSignal);
+    const resolvedStance = resolveResearchStance(
+        analysisActive ? analysis?.signal : null,
+    );
 
     function handleStyleChange(next: TradingStyle) {
         setStyle(next);
@@ -123,34 +112,6 @@ export function MarketDetails({
                     </p>
                 </div>
             </header>
-
-            <div
-                className="market-details__research-sync"
-                role="group"
-                aria-label="Đồng bộ hướng và khung thời gian nghiên cứu"
-            >
-                <label>
-                    <span>Hướng nghiên cứu</span>
-                    <select
-                        value={stance}
-                        onChange={(event) =>
-                            setStance(event.target.value as ResearchStance)
-                        }
-                    >
-                        {STANCE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <p>
-                    {stanceSyncNote(stance, resolvedStance, jevSignal, null)}{" "}
-                    Đổi khung biểu đồ hoặc “Khung thời gian nghiên cứu” sẽ khớp
-                    horizon giữ lệnh (
-                    <strong>{researchStanceLabel(resolvedStance)}</strong>).
-                </p>
-            </div>
 
             <dl className="market-details__stats">
                 <div>
@@ -205,8 +166,6 @@ export function MarketDetails({
                     refreshVersion={refreshVersion}
                     style={style}
                     onStyleChange={handleStyleChange}
-                    researchStance={stance}
-                    resolvedStance={resolvedStance}
                 />
             )}
             <div className="market-details__workspace">

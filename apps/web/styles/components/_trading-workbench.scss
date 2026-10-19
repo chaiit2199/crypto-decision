@@ -29,13 +29,6 @@
         @apply flex flex-wrap items-center justify-between gap-4;
     }
 
-    &__stance {
-        @apply mt-3 rounded-lg border px-3 py-2 text-sm;
-        border-color: var(--border);
-        background: color-mix(in srgb, var(--accent) 8%, transparent);
-        color: var(--text);
-    }
-
     &__desk {
         @apply my-4 grid gap-4;
         grid-template-columns: minmax(0, 1fr);

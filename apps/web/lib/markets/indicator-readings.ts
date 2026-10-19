@@ -1,6 +1,5 @@
 import type { MarketAnalysisData } from "@/lib/api/types";
 
-export type ResearchStance = "auto" | "long" | "short";
 export type ResolvedStance = "long" | "short" | "neutral";
 
 type Features = MarketAnalysisData["features"];
@@ -106,16 +105,10 @@ function compare(
     return a > b ? 1 : -1;
 }
 
+/** Map a fresh Jev signal to indicator reading context; WAIT/NO_DATA stay neutral. */
 export function resolveResearchStance(
-    stance: ResearchStance,
     jevSignal: MarketAnalysisData["signal"] | null | undefined,
 ): ResolvedStance {
-    if (stance === "long") {
-        return "long";
-    }
-    if (stance === "short") {
-        return "short";
-    }
     if (jevSignal === "BUY") {
         return "long";
     }

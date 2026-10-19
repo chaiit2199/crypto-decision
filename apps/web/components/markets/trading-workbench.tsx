@@ -8,8 +8,6 @@ import {
     SIMULATION_KIND_LABELS,
     TRADING_STYLE_LABELS,
 } from "@/lib/markets/trading-labels";
-import { stanceSyncNote } from "@/lib/markets/research-sync";
-import type { ResearchStance, ResolvedStance } from "@/lib/markets/indicator-readings";
 
 import { OrderBookPanel } from "./order-book-panel";
 import { TradeSetupPanel } from "./trade-setup-panel";
@@ -21,8 +19,6 @@ type TradingWorkbenchProps = {
     refreshVersion: number;
     style: TradingStyle;
     onStyleChange: (style: TradingStyle) => void;
-    researchStance: ResearchStance;
-    resolvedStance: ResolvedStance;
 };
 
 export function TradingWorkbench({
@@ -31,8 +27,6 @@ export function TradingWorkbench({
     refreshVersion,
     style,
     onStyleChange,
-    researchStance,
-    resolvedStance,
 }: TradingWorkbenchProps) {
     const [data, setData] = useState<WorkbenchData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -109,19 +103,6 @@ export function TradingWorkbench({
                     </select>
                 </label>
             </header>
-
-            <p className="trading-workbench__stance" role="status">
-                {stanceSyncNote(
-                    researchStance,
-                    resolvedStance,
-                    market.analysis?.status === "ready" &&
-                        market.analysis.freshness === "fresh" &&
-                        now < Date.parse(market.analysis.valid_until)
-                        ? market.analysis.signal
-                        : null,
-                    current?.market_regime,
-                )}
-            </p>
 
             {error && <p role="alert">{error}</p>}
             {!current && !error && (

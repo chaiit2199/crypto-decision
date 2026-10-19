@@ -100,7 +100,6 @@ test("workbench explains missing data and switches research style", async ({ pag
     await expect(page.getByRole("region", { name: "Mô phỏng quản trị lệnh" })).toHaveCount(0);
     await page.getByLabel("Khung thời gian nghiên cứu").selectOption("scalping");
     await expect(page.getByRole("button", { name: "5M", exact: true })).toBeVisible();
-    await expect(page.getByLabel("Hướng nghiên cứu")).toBeVisible();
     await expect(page.getByRole("region", { name: "Chỉ báo kỹ thuật dưới biểu đồ" })).toBeVisible();
 });
 
