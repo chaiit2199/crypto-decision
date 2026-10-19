@@ -143,6 +143,58 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert SourceSync.active_symbols("coinbase") == []
   end
 
+  test "41-second source clock lead permits USD discovery, snapshots and analysis inputs" do
+    now = MarketFixtures.now()
+    source_time = DateTime.add(now, 41)
+    date = Calendar.strftime(source_time, "%a, %d %b %Y %H:%M:%S GMT")
+
+    products = [
+      %{
+        "id" => "BTC-USD",
+        "base_currency" => "BTC",
+        "quote_currency" => "USD",
+        "status" => "online"
+      }
+    ]
+
+    Process.put(
+      :source_responses,
+      Enum.map([products, ticker("300", source_time), stats(), candles()], fn body ->
+        MarketFixtures.response(body, 200, %{"date" => [date]})
+      end)
+    )
+
+    assert {:ok, :discovered} = SourceSync.metadata("coinbase")
+    symbol = Repo.get_by!(Symbol, exchange: "coinbase", symbol: "BTCUSD")
+    assert {:ok, 300} = SourceSync.sync("coinbase", symbol.id)
+    assert Repo.get!(LatestPrice, symbol.id).data_at == source_time
+    assert Repo.get!(LatestPrice, symbol.id).fetched_at == now
+    assert Repo.get!(TickerStats, symbol.id).data_at == source_time
+    assert {:ok, market, _} = MarketData.get_market("BTCUSD", %{"exchange" => "coinbase"})
+    assert market.price_freshness.status == "fresh"
+    assert market.stats_freshness.status == "fresh"
+    assert {:ok, inputs} = MarketData.analysis_inputs(symbol.id, now)
+    assert {:ok, _} = TechnicalAnalysis.features(inputs.candles, now)
+  end
+
+  test "Coinbase excludes candles not yet closed by the HTTP server clock" do
+    symbol = coinbase()
+
+    date =
+      MarketFixtures.now() |> DateTime.add(-41) |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    Process.put(:source_responses, [
+      MarketFixtures.response(ticker()),
+      MarketFixtures.response(stats()),
+      MarketFixtures.response(candles(), 200, %{"date" => [date]})
+    ])
+
+    assert {:ok, 299} = SourceSync.sync("coinbase", symbol.id)
+    assert Sync.state(symbol.id, "source_candles").missing_count == 1
+    last_close = Repo.one(from c in Candle, select: max(c.close_time))
+    assert DateTime.compare(last_close, DateTime.add(MarketFixtures.now(), -46)) == :lt
+  end
+
   test "incomplete Coinbase history records gaps and cannot produce model features" do
     symbol = coinbase()
     queue([ticker(), stats(), tl(candles())])
@@ -223,7 +275,8 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     now = MarketFixtures.now()
     assert {:error, _} = SourceParser.price(ticker("NaN"), "coinbase", now)
     assert {:error, _} = SourceParser.price(ticker("0"), "coinbase", now)
-    assert {:error, _} = SourceParser.price(ticker("10", DateTime.add(now, 60)), "coinbase", now)
+    assert {:ok, _} = SourceParser.price(ticker("10", DateTime.add(now, 60)), "coinbase", now)
+    assert {:error, _} = SourceParser.price(ticker("10", DateTime.add(now, 61)), "coinbase", now)
     assert {:error, _} = SourceParser.price(%{"price" => "10"}, "coinbase", now)
     assert {:error, _} = SourceParser.candles([[1, "10", "20", "15", "16", "1"]], now)
     assert {:error, _} = SourceParser.candles([[0, "20", "10", "15", "16", "1"]], now)
@@ -271,7 +324,9 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
           {-121, {:error, {:stale_response, 121}}},
           {-120, :ok},
           {5, :ok},
-          {6, {:error, {:future_response, 6}}}
+          {41, :ok},
+          {60, :ok},
+          {61, {:error, {:future_response, 61}}}
         ] do
       date = now |> DateTime.add(offset) |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
       Process.put(:source_responses, [MarketFixtures.response([], 200, %{"date" => [date]})])

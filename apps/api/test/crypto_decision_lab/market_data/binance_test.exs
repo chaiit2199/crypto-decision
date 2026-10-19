@@ -27,6 +27,35 @@ defmodule CryptoDecisionLab.MarketData.BinanceTest do
     assert length(Process.get(:http_calls)) == 6
   end
 
+  test "timestamps snapshots on receipt so request latency does not consume clock tolerance" do
+    received_at = DateTime.add(F.now(), 8)
+    server_time = DateTime.add(received_at, 60)
+    date = Calendar.strftime(server_time, "%a, %d %b %Y %H:%M:%S GMT")
+    Process.put(:received_at, F.now())
+
+    F.queue([
+      fn _, _ ->
+        Process.put(:received_at, received_at)
+        F.response([], 200, %{"date" => [date]})
+      end
+    ])
+
+    opts = Keyword.put(@opts, :now, fn -> Process.get(:received_at) end)
+
+    assert {:ok, %{fetched_at: ^received_at, server_time: actual_server_time}} =
+             Binance.prices(["BTCUSDT"], opts)
+
+    assert DateTime.compare(actual_server_time, server_time) == :eq
+  end
+
+  test "HTTP clock skew beyond 60 seconds is rejected" do
+    for offset <- [-61, 61] do
+      date = F.now() |> DateTime.add(offset) |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
+      F.queue([F.response([], 200, %{"date" => [date]})])
+      assert {:error, :stale_response} = Binance.prices(["BTCUSDT"], @opts)
+    end
+  end
+
   test "429 and 418 use shared cooldown with no immediate retry" do
     for status <- [429, 418] do
       F.queue([F.response(%{}, status, %{"retry-after" => ["120"]})])

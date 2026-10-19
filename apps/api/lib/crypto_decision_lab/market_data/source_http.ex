@@ -1,6 +1,6 @@
 defmodule CryptoDecisionLab.MarketData.SourceHTTP do
   @moduledoc "Public read-only USD/gold transport. Caller serializes requests and persists cooldowns."
-  alias CryptoDecisionLab.MarketData.Collector
+  alias CryptoDecisionLab.MarketData.{Collector, SnapshotTime}
 
   @spec get(String.t(), String.t(), keyword()) :: {:ok, term(), DateTime.t()} | {:error, term()}
   def get(source, path, params \\ []) do
@@ -76,11 +76,12 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
            DateTime.from_naive!(naive, "Etc/UTC")
            |> DateTime.to_unix(:microsecond)
            |> DateTime.from_unix!(:microsecond) do
-      age_seconds = DateTime.diff(Collector.now(), time)
+      now = Collector.now()
+      age_seconds = DateTime.diff(now, time)
 
       cond do
         age_seconds > 120 -> {:error, {:stale_response, age_seconds}}
-        age_seconds < -5 -> {:error, {:future_response, -age_seconds}}
+        SnapshotTime.future?(time, now) -> {:error, {:future_response, -age_seconds}}
         true -> {:ok, time}
       end
     else

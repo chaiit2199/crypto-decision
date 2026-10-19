@@ -44,6 +44,27 @@ Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset �
 
 ## Chẩn đoán USD không đồng bộ trên production
 
-`SourceHTTP` phải phân biệt JSON không hợp lệ, thiếu/sai HTTP `Date`, response cũ và response ở tương lai. Không gộp các trường hợp này thành `:invalid_response`, vì sẽ che lỗi đồng hồ VPS hoặc lỗi upstream. Giữ giới hạn HTTP Date: tối đa 120 giây cũ hoặc 5 giây ở tương lai; không thay timestamp bằng thời gian fetch để làm dữ liệu cũ thành mới. Sai lệch thời gian được trả bằng giây trong lỗi và lưu vào trạng thái nguồn.
+`SourceHTTP` phải phân biệt JSON không hợp lệ, thiếu/sai HTTP `Date`, response cũ và response ở tương lai. Không gộp các trường hợp này thành `:invalid_response`, vì sẽ che lỗi đồng hồ VPS hoặc lỗi upstream. HTTP Date chấp nhận tối đa 120 giây cũ hoặc 60 giây ở tương lai. Giới hạn lệch đồng hồ 60 giây dùng chung cho transport, parser snapshot và freshness/đầu vào Jev; timestamp nguồn vẫn giữ nguyên. Sai lệch vượt giới hạn được trả bằng giây trong lỗi và lưu vào trạng thái nguồn.
 
 Kiểm tra trên chính VPS: `date -u` và `curl -sS --max-time 15 -D - -o /dev/null https://api.exchange.coinbase.com/products`. Đối chiếu HTTP status, Date, Content-Type và UTC của hệ điều hành. Thiếu cặp USD không có nghĩa mọi asset không được Coinbase hỗ trợ: metadata có thể chưa lưu được. Sau khi sửa nguyên nhân và deploy, collector tự thử lại theo lịch sau cooldown; không cần xóa database hoặc lịch sử job lỗi.
+
+### Sửa sai lệch timestamp 41 giây — 2026-10-19
+
+Lỗi `{:future_response, 41}` chặn metadata Coinbase trước khi đăng ký cặp USD. Binance trước đây cho phép HTTP Date lệch 60 giây nhưng từ chối `closeTime` của thống kê khi đi trước máy quá 5 giây; Jev lại từ chối mọi snapshot có tuổi âm. Thống nhất dung sai snapshot ở 60 giây giải quyết chuỗi kiểm tra mâu thuẫn này. Đây là dung sai vận hành của ứng dụng, không phải cam kết độ chính xác đồng hồ của sàn. Máy chạy backend vẫn cần đồng bộ NTP.
+
+`MarketData.SnapshotTime` sở hữu giới hạn này. Không đổi giá trị timestamp hoặc tăng tuổi tối đa của dữ liệu cũ. Binance ghi `fetched_at` khi nhận response thay vì trước request. Nến vẫn phải đóng trước thời gian nhỏ hơn giữa đồng hồ local và HTTP Date, trừ 5 giây; dung sai snapshot không cho phép nhận nến chưa đóng. Contract REST, schema DB, lịch poll và lịch Jev giữ nguyên. Các tài liệu kiến trúc/module/ERD và kế hoạch nghiệm thu hiện có nằm trong `architecture.md`, `synchronization.md` và `api.md`.
+
+Test hồi quy dùng fixture tổng hợp: lệch +41/+60 giây vẫn đăng ký USD, lưu giá/thống kê và cho phép gọi mock Jev nếu có đủ nến; +61 giây bị từ chối, dữ liệu cũ vẫn stale, nến chưa đóng vẫn bị loại. Đối chiếu schema upstream: [Coinbase ticker](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-ticker), [Coinbase stats](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-stats), [Binance Spot REST](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md).
+
+Sau deploy/restart backend, có thể khôi phục snapshot ngay trong shell đã cấu hình DB đúng:
+
+```sh
+cd apps/api
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix market.sources
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix market.sync prices
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix market.sync stats
+```
+
+Nếu nguồn đang cooldown, chờ hết thời hạn rồi chạy lại; không xóa lịch sử lỗi để bỏ cooldown. Phân tích `NO_DATA` đã lưu trong slot hiện tại không bị ghi đè; Jev đánh giá lại ở slot 15 phút tiếp theo khi dữ liệu đủ mới và đủ nến. Thông báo `missing_snapshots` không chứng minh key Jev lỗi, vì chưa đến bước gọi provider.
+
+Kiểm tra bản sửa: test ExUnit độc lập cho `SnapshotTime` chạy trong sandbox đạt 1 test, 0 failures; parser cú pháp Elixir đọc được cả 12 file code/test thay đổi; `git diff --check` đạt. Chưa chạy bộ test DB, `mix precommit`, format/compile qua Mix hoặc smoke đồng bộ/Jev thật: workspace chưa có dependencies/build, không có PostgreSQL/backend local đang chạy, sandbox chặn socket của Mix và shared memory của PostgreSQL; yêu cầu chạy ngoài sandbox đã bị từ chối. Test tích hợp mới là mã hồi quy chưa được thực thi, không phải bằng chứng hệ thống production đã phục hồi.

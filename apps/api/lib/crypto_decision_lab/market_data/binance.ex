@@ -1,7 +1,7 @@
 defmodule CryptoDecisionLab.MarketData.Binance do
   @moduledoc "Public Spot requests with explicit weights, bounded retries and shared cooldown."
   require Logger
-  alias CryptoDecisionLab.MarketData.Collector
+  alias CryptoDecisionLab.MarketData.{Collector, SnapshotTime}
 
   def exchange_info(opts \\ []),
     do: request("/exchangeInfo", [permissions: "SPOT", showPermissionSets: false], 20, opts)
@@ -31,7 +31,8 @@ defmodule CryptoDecisionLab.MarketData.Binance do
         Application.fetch_env!(:crypto_decision_lab, :binance_transport)
       )
 
-    now = Keyword.get(opts, :now, &Collector.now/0).()
+    clock = Keyword.get(opts, :now, &Collector.now/0)
+    now = clock.()
 
     with :ok <- budget.reserve(weight, now) do
       started = System.monotonic_time(:millisecond)
@@ -46,7 +47,8 @@ defmodule CryptoDecisionLab.MarketData.Binance do
 
       case result do
         {:ok, %{status: status, headers: headers} = response} ->
-          budget.observe(headers, now)
+          fetched_at = clock.()
+          budget.observe(headers, fetched_at)
 
           cond do
             status in [418, 429] ->
@@ -61,7 +63,7 @@ defmodule CryptoDecisionLab.MarketData.Binance do
               {:error, {:upstream_http, status, error_code(response.body)}}
 
             true ->
-              decode(response, now)
+              decode(response, fetched_at)
           end
 
         {:error, _reason} ->
@@ -80,7 +82,7 @@ defmodule CryptoDecisionLab.MarketData.Binance do
 
   defp decode(response, fetched_at) do
     with {:ok, server_time} <- server_time(response.headers),
-         true <- abs(DateTime.diff(server_time, fetched_at)) <= 60,
+         true <- SnapshotTime.fresh?(server_time, fetched_at, SnapshotTime.max_future_seconds()),
          {:ok, body} <- Jason.decode(response.body) do
       {:ok, %{body: body, fetched_at: fetched_at, server_time: server_time}}
     else

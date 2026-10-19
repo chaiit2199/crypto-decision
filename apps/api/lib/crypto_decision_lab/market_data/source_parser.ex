@@ -1,7 +1,7 @@
 defmodule CryptoDecisionLab.MarketData.SourceParser do
   @moduledoc "Normalize documented Coinbase and Gold API payloads without inventing missing volumes."
   alias Decimal, as: D
-  alias CryptoDecisionLab.MarketData.Parser
+  alias CryptoDecisionLab.MarketData.{Parser, SnapshotTime}
 
   def decimal(%D{coef: coef} = value) when is_integer(coef), do: {:ok, value}
   def decimal(value) when is_integer(value), do: {:ok, D.new(value)}
@@ -14,7 +14,7 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
          {:ok, price} <- decimal(value),
          true <- D.positive?(price),
          {:ok, data_at, 0} <- parse_time(timestamp),
-         true <- DateTime.diff(now, data_at) >= -5 do
+         false <- SnapshotTime.future?(data_at, now) do
       {:ok,
        %{
          price: price,

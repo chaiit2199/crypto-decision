@@ -54,6 +54,22 @@ defmodule CryptoDecisionLab.MarketData.ParserTest do
     assert {:error, _} = Parser.candle(%{}, F.now())
   end
 
+  test "ticker closeTime allows bounded clock skew and preserves the source time" do
+    now = F.now()
+
+    for offset <- [41, 60, -600] do
+      time = DateTime.add(now, offset)
+      row = Map.put(F.stats(), "closeTime", DateTime.to_unix(time, :millisecond))
+      assert {:ok, %{data_at: ^time}} = Parser.stats(row, now)
+    end
+
+    for offset <- [61, -601] do
+      time = DateTime.add(now, offset)
+      row = Map.put(F.stats(), "closeTime", DateTime.to_unix(time, :millisecond))
+      assert {:error, :invalid_or_stale_stats} = Parser.stats(row, now)
+    end
+  end
+
   test "aggregation rejects an entirely missing window between valid windows" do
     now = DateTime.add(F.now(), 86_400)
 

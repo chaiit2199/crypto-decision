@@ -1,5 +1,6 @@
 defmodule CryptoDecisionLab.MarketData.Parser do
   @moduledoc "Strict normalization of untrusted market payloads; no float conversions."
+  alias CryptoDecisionLab.MarketData.SnapshotTime
   @hour 3_600_000
 
   def decimal(value) when is_binary(value) and byte_size(value) <= 72 do
@@ -40,7 +41,7 @@ defmodule CryptoDecisionLab.MarketData.Parser do
 
     with {:ok, values} <- decimals(row, fields),
          {:ok, time} <- DateTime.from_unix(close_time * 1000, :microsecond),
-         true <- DateTime.diff(now, time) in -5..600,
+         true <- SnapshotTime.fresh?(time, now, 600),
          true <-
            Decimal.positive?(values.low_price) and
              Decimal.compare(values.high_price, values.low_price) != :lt,

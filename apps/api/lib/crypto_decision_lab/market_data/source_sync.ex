@@ -295,13 +295,14 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
           end: DateTime.to_iso8601(DateTime.from_unix!(boundary - 1))
         ]
 
-        with {:ok, body, _} <-
+        with {:ok, body, server_time} <-
                SourceHTTP.get(
                  "coinbase",
                  "/products/" <> symbol.provider_symbol <> "/candles",
                  params
                ),
-             {:ok, candles} <- SourceParser.candles(body, now) do
+             cutoff = Enum.min_by([now, server_time], &DateTime.to_unix(&1, :microsecond)),
+             {:ok, candles} <- SourceParser.candles(body, cutoff) do
           rows =
             candles
             |> Enum.filter(

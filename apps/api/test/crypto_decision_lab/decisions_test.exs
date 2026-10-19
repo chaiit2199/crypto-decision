@@ -80,6 +80,70 @@ defmodule CryptoDecisionLab.DecisionsTest do
     refute_receive {:jev_called, _}
   end
 
+  test "Binance statistics with a 41-second clock lead reach Jev after synchronization", %{
+    symbol: symbol,
+    slot: slot
+  } do
+    AnalysisFixtures.seed(symbol)
+    Repo.delete_all(MarketData.TickerStats)
+    now = MarketFixtures.now()
+    source_time = DateTime.add(now, 41)
+    date = Calendar.strftime(source_time, "%a, %d %b %Y %H:%M:%S GMT")
+
+    stats =
+      Map.put(MarketFixtures.stats(), "closeTime", DateTime.to_unix(source_time, :millisecond))
+
+    MarketFixtures.queue([MarketFixtures.response([stats], 200, %{"date" => [date]})])
+
+    assert {:ok, 1} = MarketData.Sync.stats()
+    assert Repo.get!(MarketData.TickerStats, symbol.id).data_at == source_time
+    assert {:ok, %{status: "ready"}} = Decisions.analyze(symbol.id, slot)
+    assert_receive {:jev_called, %{"stats_at" => stats_at}}
+    assert stats_at == DateTime.to_iso8601(source_time)
+  end
+
+  test "Coinbase snapshot clock lead is consistent in market reads and Jev", %{
+    symbol: symbol,
+    slot: slot
+  } do
+    symbol =
+      symbol
+      |> Ecto.Changeset.change(exchange: "coinbase", symbol: "BTCUSD", quote_asset: "USD")
+      |> Repo.update!()
+
+    AnalysisFixtures.seed(symbol)
+    time = DateTime.add(MarketFixtures.now(), 60)
+    Repo.update_all(MarketData.LatestPrice, set: [data_at: time])
+    Repo.update_all(MarketData.TickerStats, set: [data_at: time])
+
+    assert {:ok, market, _} = MarketData.get_market("BTCUSD", %{"exchange" => "coinbase"})
+    assert market.price_freshness.status == "fresh"
+    assert market.stats_freshness.status == "fresh"
+    assert {:ok, %{status: "ready"}} = Decisions.analyze(symbol.id, slot)
+    assert_receive {:jev_called, %{"symbol" => "BTCUSD", "quote_asset" => "USD"}}
+  end
+
+  test "snapshots beyond the skew limit or stale stats still block Jev", %{
+    symbol: symbol,
+    slot: slot
+  } do
+    AnalysisFixtures.seed(symbol)
+    now = MarketFixtures.now()
+    future = DateTime.add(now, 61)
+    Repo.update_all(MarketData.LatestPrice, set: [data_at: future])
+    assert {:error, :stale_price} = MarketData.analysis_inputs(symbol.id, now)
+    assert MarketData.freshness(future, 600).status == "stale"
+    Repo.update_all(MarketData.LatestPrice, set: [data_at: now])
+
+    for time <- [future, DateTime.add(now, -601)] do
+      Repo.update_all(MarketData.TickerStats, set: [data_at: time])
+      assert {:error, :stale_stats} = MarketData.analysis_inputs(symbol.id, now)
+    end
+
+    assert {:ok, %{status: "no_data", reason: "stale_stats"}} = Decisions.analyze(symbol.id, slot)
+    refute_receive {:jev_called, _}
+  end
+
   test "auth failure sets shared cooldown and cannot become a trading signal", %{
     symbol: symbol,
     slot: slot

@@ -15,6 +15,7 @@ defmodule CryptoDecisionLab.MarketData do
     CollectorState,
     Sync,
     SyncWorker,
+    SnapshotTime,
     Integrity
   }
 
@@ -252,11 +253,11 @@ defmodule CryptoDecisionLab.MarketData do
       is_nil(price) or is_nil(stats) ->
         {:error, :missing_snapshots}
 
-      DateTime.diff(now, price.data_at || price.fetched_at) not in 0..price_max_age_seconds() ->
+      not SnapshotTime.fresh?(price.data_at || price.fetched_at, now, price_max_age_seconds()) ->
         {:error, :stale_price}
 
-      DateTime.diff(now, stats.data_at) not in 0..600 or
-          DateTime.diff(now, stats.fetched_at) not in 0..600 ->
+      not SnapshotTime.fresh?(stats.data_at, now, 600) or
+          not SnapshotTime.fresh?(stats.fetched_at, now, 600) ->
         {:error, :stale_stats}
 
       true ->
@@ -305,10 +306,11 @@ defmodule CryptoDecisionLab.MarketData do
   def freshness(nil, _), do: %{status: "missing", age_seconds: nil}
 
   def freshness(timestamp, threshold) do
-    age = DateTime.diff(Collector.now(), timestamp)
+    now = Collector.now()
+    age = DateTime.diff(now, timestamp)
 
     %{
-      status: if(age in 0..threshold, do: "fresh", else: "stale"),
+      status: if(SnapshotTime.fresh?(timestamp, now, threshold), do: "fresh", else: "stale"),
       age_seconds: max(age, 0),
       timestamp: timestamp
     }
