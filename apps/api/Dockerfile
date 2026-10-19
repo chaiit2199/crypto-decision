@@ -16,7 +16,9 @@ RUN mix compile --warnings-as-errors
 COPY config/runtime.exs config/
 RUN mix release
 
-FROM ubuntu:22.04 AS runner
+# Reuse the same Ubuntu Jammy base as the builder so the runner does not
+# need a separate docker.io/library/ubuntu pull (IPv6/auth failures on CI).
+FROM hexpm/elixir:${ELIXIR_IMAGE_TAG} AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 ca-certificates curl locales \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen \
