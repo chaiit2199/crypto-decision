@@ -5,6 +5,7 @@ import Config
 config :crypto_decision_lab,
   sync_enabled: true,
   price_poll_interval_ms: 300_000,
+  gold_price_poll_interval_ms: 900_000,
   analysis_interval_seconds: 900
 
 config :crypto_decision_lab, Oban, repo: CryptoDecisionLab.Repo

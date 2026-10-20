@@ -109,6 +109,7 @@ export const statusSchema = z.object({
     data: z.object({
         enabled: z.boolean(),
         price_poll_interval_seconds: z.number().positive(),
+        gold_price_poll_interval_seconds: z.number().positive().optional(),
         sources: z.record(z.string(), z.object({
             prices_at: timestamp.nullable(),
             stats_at: timestamp.nullable(),

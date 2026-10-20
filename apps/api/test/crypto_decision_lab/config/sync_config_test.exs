@@ -90,10 +90,12 @@ defmodule CryptoDecisionLab.SyncConfigTest do
 
   test "development intervals come from dev.exs while other environments retain their defaults" do
     assert config(:dev)[:price_poll_interval_ms] == 300_000
+    assert config(:dev)[:gold_price_poll_interval_ms] == 900_000
     assert config(:dev)[:analysis_interval_seconds] == 900
 
     for env <- [:test, :prod] do
       assert config(env)[:price_poll_interval_ms] == 300_000
+      assert config(env)[:gold_price_poll_interval_ms] == 900_000
       assert config(env)[:analysis_interval_seconds] == 900
     end
   end

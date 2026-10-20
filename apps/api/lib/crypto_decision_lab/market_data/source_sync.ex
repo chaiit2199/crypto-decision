@@ -22,11 +22,21 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
 
   @spec enqueue() :: {:ok, non_neg_integer()}
   def enqueue do
-    Enum.each(@sources, fn source ->
-      %{source: source} |> SourceWorker.new() |> Oban.insert!()
-    end)
+    with {:ok, n} <- enqueue_coinbase(),
+         {:ok, m} <- enqueue_gold() do
+      {:ok, n + m}
+    end
+  end
 
-    {:ok, length(@sources)}
+  @spec enqueue_coinbase() :: {:ok, non_neg_integer()}
+  def enqueue_coinbase, do: enqueue_source("coinbase")
+
+  @spec enqueue_gold() :: {:ok, non_neg_integer()}
+  def enqueue_gold, do: enqueue_source("gold_api")
+
+  defp enqueue_source(source) when source in @sources do
+    %{source: source} |> SourceWorker.new() |> Oban.insert!()
+    {:ok, 1}
   end
 
   @spec metadata(String.t()) :: {:ok, term()} | {:error, term()}
@@ -174,9 +184,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
 
         symbol ->
           state = Sync.state(id, "snapshot")
-
-          interval =
-            div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000)
+          interval = snapshot_interval_seconds(source)
 
           if state && state.last_attempt_at &&
                DateTime.diff(Collector.now(), state.last_attempt_at) < interval do
@@ -204,6 +212,12 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
       end
     end)
   end
+
+  defp snapshot_interval_seconds("gold_api"),
+    do: div(Application.fetch_env!(:crypto_decision_lab, :gold_price_poll_interval_ms), 1000)
+
+  defp snapshot_interval_seconds(_source),
+    do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000)
 
   defp fetch_symbol(%Symbol{exchange: "gold_api"} = symbol) do
     with {:ok, body, _} <- SourceHTTP.get("gold_api", "/price/XAU/USD"),

@@ -12,6 +12,8 @@ config :crypto_decision_lab,
   generators: [timestamp_type: :utc_datetime_usec],
   sync_enabled: false,
   price_poll_interval_ms: 300_000,
+  # Gold spot is slower-moving; keep reference polls lighter than crypto USD.
+  gold_price_poll_interval_ms: 900_000,
   analysis_interval_seconds: 900,
   binance_transport: CryptoDecisionLab.MarketData.Binance.Transport,
   clock: CryptoDecisionLab.Clock

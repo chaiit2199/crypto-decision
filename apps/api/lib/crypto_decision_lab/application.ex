@@ -20,8 +20,21 @@ defmodule CryptoDecisionLab.Application do
         {CryptoDecisionLab.MarketData.Poller,
          name: CryptoDecisionLab.MarketData.SourcePoller,
          bootstrap: false,
-         run: &CryptoDecisionLab.MarketData.SourceSync.enqueue/0},
+         run: &CryptoDecisionLab.MarketData.SourceSync.enqueue_coinbase/0},
         id: CryptoDecisionLab.MarketData.SourcePoller
+      ),
+      Supervisor.child_spec(
+        {CryptoDecisionLab.MarketData.Poller,
+         name: CryptoDecisionLab.MarketData.GoldSourcePoller,
+         bootstrap: false,
+         interval:
+           Application.get_env(
+             :crypto_decision_lab,
+             :gold_price_poll_interval_ms,
+             900_000
+           ),
+         run: &CryptoDecisionLab.MarketData.SourceSync.enqueue_gold/0},
+        id: CryptoDecisionLab.MarketData.GoldSourcePoller
       ),
       # Start to serve requests, typically the last entry
       CryptoDecisionLabWeb.Endpoint

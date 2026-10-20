@@ -59,8 +59,9 @@ export function GoldDesk({
                         XAU/USD <span>Vàng thế giới</span>
                     </h1>
                     <p>
-                        Nghiên cứu theo nến ngày (tham chiếu). Không khớp
-                        pip/spread XM · không đặt lệnh thật.
+                        Giá tham chiếu ~15 phút · Jev theo lịch 15 phút trên nến
+                        ngày XAUS (miễn phí). Không khớp pip/spread XM · không
+                        đặt lệnh thật.
                     </p>
                 </div>
                 <Link href="/" className="gold-desk__back">
@@ -149,8 +150,9 @@ export function GoldDesk({
             </div>
 
             <p className="gold-desk__caption">
-                Nguồn giá: Gold API · lịch sử ngày: XAUS (tham chiếu). Phù hợp
-                theo dõi xu hướng nhiều tuần–tháng, không dùng để scalp.
+                Nguồn giá: Gold API (~15 phút) · lịch sử/Jev: nến 1 ngày XAUS
+                (miễn phí). Khung ngắn hơn 1 ngày cần nguồn nến giờ trả phí.
+                Không dùng để scalp.
             </p>
         </section>
     );
@@ -169,6 +171,19 @@ function goldAsset(result: MarketMonitorResult): Asset | undefined {
     return result.data.assets.find((row) => row.symbol === "XAU");
 }
 
+function goldPollMs(result: MarketMonitorResult): number {
+    if (!result.ok) {
+        return 900_000;
+    }
+
+    const seconds =
+        result.data.status.gold_price_poll_interval_seconds ??
+        result.data.status.price_poll_interval_seconds ??
+        900;
+
+    return seconds * 1000;
+}
+
 export function GoldDeskShell({
     initialResult,
     initialTime,
@@ -178,11 +193,7 @@ export function GoldDeskShell({
         initialResult.ok ? null : initialResult.message,
     );
     const [now, setNow] = useState(initialTime);
-    const pollInterval = useRef(
-        initialResult.ok
-            ? initialResult.data.status.price_poll_interval_seconds * 1000
-            : 300_000,
-    );
+    const pollInterval = useRef(goldPollMs(initialResult));
 
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -201,8 +212,7 @@ export function GoldDeskShell({
             }
 
             if (result.ok) {
-                pollInterval.current =
-                    result.data.status.price_poll_interval_seconds * 1000;
+                pollInterval.current = goldPollMs(result);
                 setAsset(goldAsset(result));
                 setError(null);
             } else {

@@ -369,8 +369,10 @@ defmodule CryptoDecisionLab.MarketData do
   def price_max_age_seconds,
     do: price_max_age_seconds("binance")
 
-  # Gold API free spot updates slower than crypto polls; keep research window wider.
-  def price_max_age_seconds("gold_api"), do: 1_800
+  # Gold spot poll is 15 minutes; allow one interval plus delivery slack.
+  def price_max_age_seconds("gold_api"),
+    do: div(Application.fetch_env!(:crypto_decision_lab, :gold_price_poll_interval_ms), 1000) + 120
+
   def price_max_age_seconds(_exchange),
     do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000) + 60
 
@@ -417,6 +419,8 @@ defmodule CryptoDecisionLab.MarketData do
        sources: Map.new(Repo.all(CollectorState), &{&1.key, fields(&1)}),
        price_poll_interval_seconds:
          div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000),
+       gold_price_poll_interval_seconds:
+         div(Application.fetch_env!(:crypto_decision_lab, :gold_price_poll_interval_ms), 1000),
        synchronization: states,
        jobs: jobs,
        enabled: Application.get_env(:crypto_decision_lab, :sync_enabled, false),

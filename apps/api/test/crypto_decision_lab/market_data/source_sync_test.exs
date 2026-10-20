@@ -275,7 +275,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4144.299805")
     assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
     assert market.analysis_unavailable_reason == "gold_history_unavailable"
-    assert market.price_max_age_seconds == 1_800
+    assert market.price_max_age_seconds == 1_020
   end
 
   test "41-second source clock lead permits USD discovery, snapshots and analysis inputs" do
