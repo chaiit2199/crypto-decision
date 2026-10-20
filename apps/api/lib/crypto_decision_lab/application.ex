@@ -33,7 +33,7 @@ defmodule CryptoDecisionLab.Application do
              :gold_price_poll_interval_ms,
              900_000
            ),
-         run: &CryptoDecisionLab.MarketData.SourceSync.enqueue_gold/0},
+         run: &CryptoDecisionLab.MarketData.SourceSync.poll_gold/0},
         id: CryptoDecisionLab.MarketData.GoldSourcePoller
       ),
       # Start to serve requests, typically the last entry

@@ -314,10 +314,10 @@ defmodule CryptoDecisionLab.MarketData do
         {:error, :missing_snapshots}
 
       not SnapshotTime.fresh?(
-            gold_price_at(symbol.exchange, price),
-            now,
-            price_max_age_seconds(symbol.exchange)
-          ) ->
+        gold_price_at(symbol.exchange, price),
+        now,
+        price_max_age_seconds(symbol.exchange)
+      ) ->
         {:error, :stale_price}
 
       not SnapshotTime.fresh?(stats.data_at, now, gold_stats_max_age(symbol.exchange)) or
@@ -371,7 +371,8 @@ defmodule CryptoDecisionLab.MarketData do
 
   # Gold spot poll is 15 minutes; allow one interval plus delivery slack.
   def price_max_age_seconds("gold_api"),
-    do: div(Application.fetch_env!(:crypto_decision_lab, :gold_price_poll_interval_ms), 1000) + 120
+    do:
+      div(Application.fetch_env!(:crypto_decision_lab, :gold_price_poll_interval_ms), 1000) + 120
 
   def price_max_age_seconds(_exchange),
     do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000) + 60

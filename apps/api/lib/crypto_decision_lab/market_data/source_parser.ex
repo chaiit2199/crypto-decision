@@ -40,6 +40,34 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
 
   def price(_, _, _), do: {:error, :invalid_price}
 
+  @doc """
+  Live XAU/USD from XAUS `/api/v1/spot` (CDN front for the free gold feed).
+  Rejects unavailable/stale payloads so we never store a frozen outage quote as fresh.
+  """
+  def xaus_spot(%{"spot_usd_oz" => value} = row, now) do
+    status = get_in(row, ["data_state", "status"])
+    timestamp = row["price_as_of"] || row["updated_at"]
+
+    with true <- status in [nil, "fresh"],
+         true <- row["stale"] != true,
+         {:ok, price} <- decimal(value),
+         true <- D.positive?(price),
+         {:ok, data_at, 0} <- parse_time(timestamp),
+         false <- SnapshotTime.future?(data_at, now) do
+      {:ok,
+       %{
+         price: price,
+         data_at: DateTime.from_unix!(DateTime.to_unix(data_at, :microsecond), :microsecond),
+         fetched_at: now,
+         updated_at: now
+       }}
+    else
+      _ -> {:error, :invalid_price}
+    end
+  end
+
+  def xaus_spot(_, _), do: {:error, :invalid_price}
+
   def stats(row, data_at, now) when is_map(row) do
     with {:ok, values} <-
            decimals(row,

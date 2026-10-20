@@ -34,6 +34,37 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
   @spec enqueue_gold() :: {:ok, non_neg_integer()}
   def enqueue_gold, do: enqueue_source("gold_api")
 
+  @doc """
+  Monotonic gold poll: refresh catalog when needed, then snapshot inline.
+
+  Avoids depending on a follow-up Oban job after metadata — production can
+  stall for hours when Gold API transport fails and the unique worker never
+  re-runs the symbol snapshot.
+  """
+  @spec poll_gold() :: {:ok, term()} | {:error, term()}
+  def poll_gold do
+    with {:ok, _} <- metadata("gold_api", enqueue: false) do
+      case active_symbols("gold_api") do
+        [] ->
+          {:ok, :unavailable}
+
+        symbols ->
+          results = Enum.map(symbols, &sync("gold_api", &1.id))
+
+          cond do
+            Enum.any?(results, &match?({:ok, _}, &1)) ->
+              {:ok, results}
+
+            Enum.any?(results, &match?({:error, :source_busy}, &1)) ->
+              {:error, :source_busy}
+
+            true ->
+              List.last(results) || {:ok, :unavailable}
+          end
+      end
+    end
+  end
+
   defp enqueue_source(source) when source in @sources do
     %{source: source} |> SourceWorker.new() |> Oban.insert!()
     {:ok, 1}
@@ -53,7 +84,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
         end
       end)
 
-    if match?({:ok, _}, result) do
+    if match?({:ok, _}, result) and Keyword.get(opts, :enqueue, true) do
       for symbol <- active_symbols(source) do
         %{source: source, symbol_id: symbol.id} |> SourceWorker.new() |> Oban.insert!()
       end
@@ -184,7 +215,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
 
         symbol ->
           state = Sync.state(id, "snapshot")
-          interval = snapshot_interval_seconds(source)
+          interval = snapshot_retry_seconds(source, state)
 
           if state && state.last_attempt_at &&
                DateTime.diff(Collector.now(), state.last_attempt_at) < interval do
@@ -201,7 +232,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
                   last_error: nil
                 })
 
-                update_state(source, prices_at: Collector.now())
+                update_state(source, prices_at: Collector.now(), blocked_until: nil)
 
               {:error, reason} ->
                 Sync.mark_state(id, :snapshot, %{status: "error", last_error: inspect(reason)})
@@ -219,24 +250,28 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
   defp snapshot_interval_seconds(_source),
     do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000)
 
+  # Failed gold snapshots should not wait a full 15 minutes before the next try.
+  defp snapshot_retry_seconds("gold_api", %{status: "error"}), do: 120
+  defp snapshot_retry_seconds(source, _), do: snapshot_interval_seconds(source)
+
   defp fetch_symbol(%Symbol{exchange: "gold_api"} = symbol) do
-    with {:ok, body, _} <- SourceHTTP.get("gold_api", "/price/XAU/USD"),
-         {:ok, price} <- SourceParser.price(body, "gold_api", Collector.now()) do
+    with {:ok, price} <- fetch_gold_live_price(Collector.now()) do
       save_gold_price(symbol.id, price)
 
       # Price snapshot must succeed even when free daily history is temporarily down.
-      # Rescue unexpected raises so the enclosing transaction still commits the price.
+      # Use a savepoint so a candle SQL failure does not abort the price write.
       candle_result =
-        try do
-          fetch_gold_candles(symbol)
-        rescue
-          error ->
+        case persist_gold_history(symbol) do
+          {:ok, value} ->
+            {:ok, value}
+
+          {:error, reason} ->
             Sync.mark_state(symbol.id, :source_candles, %{
               status: "error",
-              last_error: Exception.message(error)
+              last_error: inspect(reason)
             })
 
-            {:error, {:gold_history_failed, error.__struct__}}
+            {:error, reason}
         end
 
       case candle_result do
@@ -291,6 +326,49 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
 
         fetch_candles(symbol)
       end
+    end
+  end
+
+  defp persist_gold_history(symbol) do
+    Repo.query!("SAVEPOINT gold_history")
+
+    try do
+      result = fetch_gold_candles(symbol)
+      Repo.query!("RELEASE SAVEPOINT gold_history")
+      result
+    rescue
+      error ->
+        Repo.query!("ROLLBACK TO SAVEPOINT gold_history")
+        {:error, {:gold_history_failed, Exception.message(error)}}
+    end
+  end
+
+  # Gold API can be unreachable from some hosts; XAUS spot is the same free feed
+  # behind a CDN and is already required for daily history.
+  defp fetch_gold_live_price(now) do
+    case fetch_gold_api_quote(now) do
+      {:ok, _} = ok ->
+        ok
+
+      {:error, primary} ->
+        case fetch_xaus_spot_quote(now) do
+          {:ok, _} = ok -> ok
+          {:error, _} -> {:error, primary}
+        end
+    end
+  end
+
+  defp fetch_gold_api_quote(now) do
+    with {:ok, body, _} <- SourceHTTP.get("gold_api", "/price/XAU/USD"),
+         {:ok, price} <- SourceParser.price(body, "gold_api", now) do
+      {:ok, price}
+    end
+  end
+
+  defp fetch_xaus_spot_quote(now) do
+    with {:ok, body, _} <- SourceHTTP.get("xaus", "/api/v1/spot", compact: "1"),
+         {:ok, price} <- SourceParser.xaus_spot(body, now) do
+      {:ok, price}
     end
   end
 
@@ -407,11 +485,11 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
     today = DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400)
 
     cond do
-      count > 0 and state && state.status in ["complete", "gaps"] && state.last_attempt_at &&
+      (count > 0 and state) && state.status in ["complete", "gaps"] && state.last_attempt_at &&
           DateTime.diff(now, state.last_attempt_at) < 6 * 3600 ->
         {:ok, :candles_checked}
 
-      count > 0 and last && DateTime.compare(last, DateTime.add(today, -86_400)) != :lt ->
+      (count > 0 and last) && DateTime.compare(last, DateTime.add(today, -86_400)) != :lt ->
         {:ok, :current}
 
       true ->
@@ -557,7 +635,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
                        )
 
                      _ ->
-                       update_state(source, last_error: nil)
+                       update_state(source, last_error: nil, blocked_until: nil)
                    end
 
                    result

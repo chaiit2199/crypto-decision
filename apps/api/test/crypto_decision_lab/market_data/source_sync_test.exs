@@ -97,7 +97,10 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert {:ok, market, _} = MarketData.get_market("BTCUSD", %{"exchange" => "coinbase"})
     assert market.quote_asset == "USD"
     assert market.price_freshness.status == "fresh"
-    assert market.price_max_age_seconds == 180
+
+    assert market.price_max_age_seconds ==
+             div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000) + 60
+
     assert {:ok, input} = MarketData.analysis_inputs(symbol.id, MarketFixtures.now())
     assert input.snapshot["exchange"] == "coinbase"
     assert input.snapshot["quote_volume_24h"] == nil
@@ -137,7 +140,10 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
 
     assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
     assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
-    assert market.price_freshness.status == "stale"
+
+    # Freshness follows fetched_at for gold; a frozen source updatedAt stays stale-looking only on data_at.
+    assert market.price_freshness.status == "fresh"
+    assert market.latest_price.data_at == old
     assert market.analysis_unavailable_reason == "gold_history_unavailable"
     assert Repo.aggregate(Candle, :count) == 0
     assert SourceSync.active_symbols("coinbase") == []
@@ -276,6 +282,65 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
     assert market.analysis_unavailable_reason == "gold_history_unavailable"
     assert market.price_max_age_seconds == 1_020
+  end
+
+  test "gold falls back to XAUS spot when Gold API transport fails" do
+    queue([[%{"symbol" => "XAU", "name" => "Gold"}]])
+    assert {:ok, :discovered} = SourceSync.metadata("gold_api")
+    symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
+    now = MarketFixtures.now()
+
+    Application.put_env(:crypto_decision_lab, :source_request, fn options ->
+      send(self(), {:source_request, options[:url]})
+
+      cond do
+        String.contains?(options[:url], "/price/") ->
+          {:error, :timeout}
+
+        String.contains?(options[:url], "/api/v1/spot") ->
+          MarketFixtures.response(%{
+            "spot_usd_oz" => "4122.200195",
+            "stale" => false,
+            "price_as_of" => DateTime.to_iso8601(now),
+            "updated_at" => DateTime.to_iso8601(now),
+            "data_state" => %{"status" => "fresh"}
+          })
+
+        String.contains?(options[:url], "/api/v1/history") ->
+          MarketFixtures.response(%{
+            "symbol" => "XAUUSD",
+            "interval" => "daily",
+            "points" => []
+          })
+
+        true ->
+          [result | rest] = Process.get(:source_responses, [])
+          Process.put(:source_responses, rest)
+          result
+      end
+    end)
+
+    assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
+    assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4122.200195")
+  end
+
+  test "poll_gold snapshots inline after metadata without requiring a follow-up Oban job" do
+    now = MarketFixtures.now()
+
+    queue([
+      [%{"symbol" => "XAU", "name" => "Gold"}],
+      %{
+        "symbol" => "XAU",
+        "currency" => "USD",
+        "price" => "4110.5",
+        "updatedAt" => DateTime.to_iso8601(now)
+      },
+      %{"symbol" => "XAUUSD", "interval" => "daily", "points" => []}
+    ])
+
+    assert {:ok, [{:ok, 0}]} = SourceSync.poll_gold()
+    symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
+    assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4110.5")
   end
 
   test "41-second source clock lead permits USD discovery, snapshots and analysis inputs" do
@@ -465,9 +530,9 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
     assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4144.299805")
 
-    # Advance past the snapshot interval so the next poll is due.
+    # Advance past the gold snapshot interval so the next poll is due.
     Sync.mark_state(symbol.id, :snapshot, %{
-      last_attempt_at: DateTime.add(MarketFixtures.now(), -400)
+      last_attempt_at: DateTime.add(MarketFixtures.now(), -1_000)
     })
 
     now = MarketFixtures.now()

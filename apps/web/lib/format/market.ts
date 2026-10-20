@@ -56,13 +56,13 @@ export function priceStatus(
         return "missing";
     }
 
-    if (
-        now -
-            Date.parse(
-                market.latest_price.data_at ?? market.latest_price.fetched_at,
-            ) >
-        market.price_max_age_seconds * 1000
-    ) {
+    // Gold API updatedAt can freeze while polls still refresh fetched_at.
+    const pricedAt =
+        market.exchange === "gold_api"
+            ? (market.latest_price.fetched_at ?? market.latest_price.data_at)
+            : (market.latest_price.data_at ?? market.latest_price.fetched_at);
+
+    if (now - Date.parse(pricedAt) > market.price_max_age_seconds * 1000) {
         return "stale";
     }
 

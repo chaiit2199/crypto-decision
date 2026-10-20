@@ -150,9 +150,9 @@ export function GoldDesk({
             </div>
 
             <p className="gold-desk__caption">
-                Nguồn giá: Gold API (~15 phút) · lịch sử/Jev: nến 1 ngày XAUS
-                (miễn phí). Khung ngắn hơn 1 ngày cần nguồn nến giờ trả phí.
-                Không dùng để scalp.
+                Nguồn giá: Gold API hoặc XAUS spot (~15 phút) · lịch sử/Jev: nến
+                1 ngày XAUS (miễn phí). Khung ngắn hơn 1 ngày cần nguồn nến giờ
+                trả phí. Không dùng để scalp.
             </p>
         </section>
     );
