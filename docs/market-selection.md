@@ -22,7 +22,7 @@ MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix run priv/repo/seeds.exs
 
 ## Bỏ hoặc bật lại mã đã seed
 
-Xóa tuple khỏi `@groups` rồi chạy seed sẽ tắt asset đó; lịch sử nến/phân tích vẫn được giữ. Muốn **xóa hẳn** asset ngoài danh mục hiện tại (20 mã gồm BTC, đã lọc bỏ mã không có Spot USDT/`BREAK`) và dữ liệu liên quan để giảm dung lượng DB, chạy migration `20261019080000_prune_market_universe` rồi `VACUUM (ANALYZE)` trên PostgreSQL. Migration này không hoàn tác được. XAU đăng ký lại từ Gold API sau lần sync nguồn tiếp theo nếu cần.
+Xóa tuple khỏi `@groups` rồi chạy seed sẽ tắt asset đó; lịch sử nến/phân tích vẫn được giữ. Muốn **xóa hẳn** asset ngoài danh mục hiện tại (18 crypto + XAU) và dữ liệu liên quan để giảm dung lượng DB, chạy migration `20261020114500_prune_xm_unfamiliar_assets` (sau seed nếu cần) rồi `VACUUM (ANALYZE)` trên PostgreSQL. Migration này không hoàn tác được; giữ BTC–IMX theo `Universe` và XAU. XAU đăng ký lại từ Gold API sau lần sync nguồn tiếp theo nếu bị thiếu.
 
 Muốn tắt tạm một mã vẫn còn trong danh mục:
 
