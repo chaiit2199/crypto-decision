@@ -245,17 +245,18 @@ defmodule CryptoDecisionLab.MarketData do
     price = prices[symbol.id]
     ticker = stats[symbol.id]
 
+    max_age = price_max_age_seconds(symbol.exchange)
+
     Map.merge(fields(symbol), %{
       analysis_enabled: Decisions.enabled?(),
       analysis_unavailable_reason: analysis_unavailable_reason(symbol),
-      price_max_age_seconds: price_max_age_seconds(),
+      price_max_age_seconds: max_age,
       analysis_interval_seconds: Decisions.interval_seconds(),
       analysis: analyses[symbol.id],
       latest_price: fields(price),
       ticker_stats: fields(ticker),
-      price_freshness:
-        freshness(price && (price.data_at || price.fetched_at), price_max_age_seconds()),
-      stats_freshness: freshness(ticker && ticker.data_at, 600)
+      price_freshness: freshness(price && (price.data_at || price.fetched_at), max_age),
+      stats_freshness: freshness(ticker && ticker.data_at, gold_stats_max_age(symbol.exchange))
     })
   end
 
@@ -305,11 +306,15 @@ defmodule CryptoDecisionLab.MarketData do
       is_nil(price) or is_nil(stats) ->
         {:error, :missing_snapshots}
 
-      not SnapshotTime.fresh?(price.data_at || price.fetched_at, now, price_max_age_seconds()) ->
+      not SnapshotTime.fresh?(
+            price.data_at || price.fetched_at,
+            now,
+            price_max_age_seconds(symbol.exchange)
+          ) ->
         {:error, :stale_price}
 
-      not SnapshotTime.fresh?(stats.data_at, now, 600) or
-          not SnapshotTime.fresh?(stats.fetched_at, now, 600) ->
+      not SnapshotTime.fresh?(stats.data_at, now, gold_stats_max_age(symbol.exchange)) or
+          not SnapshotTime.fresh?(stats.fetched_at, now, gold_stats_max_age(symbol.exchange)) ->
         {:error, :stale_stats}
 
       true ->
@@ -355,7 +360,15 @@ defmodule CryptoDecisionLab.MarketData do
 
   @doc "Allow one collection interval plus 60 seconds of delivery delay."
   def price_max_age_seconds,
+    do: price_max_age_seconds("binance")
+
+  # Gold API free spot updates slower than crypto polls; keep research window wider.
+  def price_max_age_seconds("gold_api"), do: 1_800
+  def price_max_age_seconds(_exchange),
     do: div(Application.fetch_env!(:crypto_decision_lab, :price_poll_interval_ms), 1000) + 60
+
+  defp gold_stats_max_age("gold_api"), do: 86_400
+  defp gold_stats_max_age(_), do: 600
 
   def freshness(nil, _), do: %{status: "missing", age_seconds: nil}
 

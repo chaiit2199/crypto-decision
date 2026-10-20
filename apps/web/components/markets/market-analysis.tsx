@@ -89,15 +89,15 @@ export function MarketAnalysis({
         assetEnabled && market?.analysis_enabled && !stale && analysis?.status === "ready",
     );
     const signal = active && analysis ? analysis.signal : "WAIT";
+    const waitingGoldHistory =
+        market?.analysis_unavailable_reason === "gold_history_unavailable";
     let notice: string | null = null;
 
     if (!market) {
         notice = "Không có cặp giao dịch khả dụng để phân tích.";
     } else if (!assetEnabled) {
         notice = "Tài sản đã tắt đồng bộ và phân tích. Cần bật lại tài sản để nhận kết quả mới.";
-    } else if (
-        market.analysis_unavailable_reason === "gold_history_unavailable"
-    ) {
+    } else if (waitingGoldHistory) {
         notice =
             "Hiện chỉ có giá vàng tham chiếu. Đang chờ lịch sử nến ngày (XAUS) trước khi tính chỉ báo và Jev dài hạn.";
     } else if (!market.analysis_enabled) {
@@ -123,14 +123,14 @@ export function MarketAnalysis({
                     {notice}
                 </p>
             )}
-            {analysis && (
+            {!waitingGoldHistory && analysis && (
                 <p className="market-analysis__time">
                     Lần đánh giá: {formatChartTime(analysis.analyzed_at)} (giờ
                     Việt Nam)
                     {stale && " · Đã hết hạn"}
                 </p>
             )}
-            {analysis?.status === "ready" && (
+            {!waitingGoldHistory && analysis?.status === "ready" && (
                 <>
                     <p className="market-analysis__signal" data-signal={signal}>
                         {!active
@@ -167,7 +167,7 @@ export function MarketAnalysis({
                     </dl>
                 </>
             )}
-            {analysis?.model && (
+            {!waitingGoldHistory && analysis?.model && (
                 <p className="market-analysis__time">
                     Mô hình {analysis.model}
                     {analysis.features.last_close_time &&

@@ -5,6 +5,17 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
 
   def decimal(%D{coef: coef} = value) when is_integer(coef), do: {:ok, value}
   def decimal(value) when is_integer(value), do: {:ok, D.new(value)}
+
+  # XAUS may emit JSON numbers; Jason(floats: :decimals) yields Decimal, but accept
+  # plain floats via a bounded digit string so we never store IEEE noise silently.
+  def decimal(value) when is_float(value) and value > 0 and value < 1.0e12 do
+    value
+    |> :erlang.float_to_binary(decimals: 8)
+    |> String.trim_trailing("0")
+    |> String.trim_trailing(".")
+    |> Parser.decimal()
+  end
+
   def decimal(value), do: Parser.decimal(value)
 
   def price(%{"price" => value} = row, source, now) do

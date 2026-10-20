@@ -210,6 +210,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
          {:ok, price} <- SourceParser.price(body, "gold_api", Collector.now()) do
       save_price(symbol.id, price)
 
+      # Price snapshot must succeed even when free daily history is temporarily down.
       case fetch_gold_candles(symbol) do
         {:ok, count} when is_integer(count) ->
           refresh_gold_stats(symbol.id, price.price, Collector.now())
@@ -219,8 +220,14 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
           refresh_gold_stats(symbol.id, price.price, Collector.now())
           {:ok, other}
 
-        error ->
-          error
+        {:error, reason} ->
+          Sync.mark_state(symbol.id, :source_candles, %{
+            status: "error",
+            last_error: inspect(reason)
+          })
+
+          refresh_gold_stats(symbol.id, price.price, Collector.now())
+          {:ok, :price_without_history}
       end
     end
   end
@@ -328,10 +335,19 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
     end
   end
 
-  # Free daily history via XAUS; refresh at most every 6 hours (upstream caches ~6h).
+  # Free daily history via XAUS; refresh at most every 6 hours once bars exist.
+  # Never treat an empty store as "checked" — keep retrying until 1d candles land.
   defp fetch_gold_candles(symbol) do
     now = Collector.now()
     state = Sync.state(symbol.id, "source_candles")
+
+    count =
+      Repo.aggregate(
+        from(c in Candle,
+          where: c.market_symbol_id == ^symbol.id and c.timeframe == "1d"
+        ),
+        :count
+      )
 
     last =
       Repo.one(
@@ -343,11 +359,11 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
     today = DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400)
 
     cond do
-      state && state.status in ["complete", "gaps"] && state.last_attempt_at &&
+      count > 0 and state && state.status in ["complete", "gaps"] && state.last_attempt_at &&
           DateTime.diff(now, state.last_attempt_at) < 6 * 3600 ->
         {:ok, :candles_checked}
 
-      last && DateTime.compare(last, DateTime.add(today, -86_400)) != :lt ->
+      count > 0 and last && DateTime.compare(last, DateTime.add(today, -86_400)) != :lt ->
         {:ok, :current}
 
       true ->

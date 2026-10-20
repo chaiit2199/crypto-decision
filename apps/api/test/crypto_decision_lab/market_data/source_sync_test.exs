@@ -223,6 +223,59 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
              )
   end
 
+  test "gold daily parser accepts JSON number OHLC like the live XAUS payload" do
+    now = MarketFixtures.now()
+    today = DateTime.to_date(DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400))
+    closed = Date.add(today, -1)
+
+    assert {:ok, [candle]} =
+             SourceParser.gold_daily_candles(
+               %{
+                 "points" => [
+                   %{"d" => Date.to_iso8601(closed), "h" => 4166.1, "l" => 4134.5, "c" => 4162.7}
+                 ]
+               },
+               now
+             )
+
+    assert Decimal.equal?(candle.close, "4162.7")
+  end
+
+  test "gold keeps the live price when XAUS history is temporarily unavailable" do
+    queue([[%{"symbol" => "XAU", "name" => "Gold"}]])
+    assert {:ok, :discovered} = SourceSync.metadata("gold_api")
+    symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
+    now = MarketFixtures.now()
+
+    Application.put_env(:crypto_decision_lab, :source_request, fn options ->
+      send(self(), {:source_request, options[:url]})
+
+      cond do
+        String.contains?(options[:url], "/price/") ->
+          MarketFixtures.response(%{
+            "symbol" => "XAU",
+            "currency" => "USD",
+            "price" => "4144.299805",
+            "updatedAt" => DateTime.to_iso8601(now)
+          })
+
+        String.contains?(options[:url], "xaus.com") ->
+          {:ok, %{status: 403, body: "", headers: %{}}}
+
+        true ->
+          [result | rest] = Process.get(:source_responses, [])
+          Process.put(:source_responses, rest)
+          result
+      end
+    end)
+
+    assert {:ok, :price_without_history} = SourceSync.sync("gold_api", symbol.id)
+    assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4144.299805")
+    assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
+    assert market.analysis_unavailable_reason == "gold_history_unavailable"
+    assert market.price_max_age_seconds == 1_800
+  end
+
   test "41-second source clock lead permits USD discovery, snapshots and analysis inputs" do
     now = MarketFixtures.now()
     source_time = DateTime.add(now, 41)
