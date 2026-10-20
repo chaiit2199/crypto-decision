@@ -65,8 +65,10 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
     end
   end
 
-  # Daily history is cached upstream for hours; use local fetch time as transport clock.
+  # XAUS caches for hours; Gold API CDN Date often drifts past our 120s skew window.
+  # Source timestamps live in the JSON body (updatedAt / points); transport clock is local.
   defp response_time("xaus", _headers, _decoded), do: {:ok, Collector.now()}
+  defp response_time("gold_api", _headers, _decoded), do: {:ok, Collector.now()}
 
   defp response_time(_source, headers, _decoded) do
     with {:ok, time} <- http_date(headers), do: validate_skew(time)

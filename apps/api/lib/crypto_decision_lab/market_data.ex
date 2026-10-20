@@ -246,6 +246,13 @@ defmodule CryptoDecisionLab.MarketData do
     ticker = stats[symbol.id]
 
     max_age = price_max_age_seconds(symbol.exchange)
+    # For gold, freshness follows last successful poll (fetched_at); data_at stays source time.
+    price_at =
+      cond do
+        is_nil(price) -> nil
+        symbol.exchange == "gold_api" -> price.fetched_at || price.data_at
+        true -> price.data_at || price.fetched_at
+      end
 
     Map.merge(fields(symbol), %{
       analysis_enabled: Decisions.enabled?(),
@@ -255,7 +262,7 @@ defmodule CryptoDecisionLab.MarketData do
       analysis: analyses[symbol.id],
       latest_price: fields(price),
       ticker_stats: fields(ticker),
-      price_freshness: freshness(price && (price.data_at || price.fetched_at), max_age),
+      price_freshness: freshness(price_at, max_age),
       stats_freshness: freshness(ticker && ticker.data_at, gold_stats_max_age(symbol.exchange))
     })
   end
@@ -307,7 +314,7 @@ defmodule CryptoDecisionLab.MarketData do
         {:error, :missing_snapshots}
 
       not SnapshotTime.fresh?(
-            price.data_at || price.fetched_at,
+            gold_price_at(symbol.exchange, price),
             now,
             price_max_age_seconds(symbol.exchange)
           ) ->
@@ -334,14 +341,14 @@ defmodule CryptoDecisionLab.MarketData do
         {:ok,
          %{
            candles: candles,
-           price_at: price.data_at || price.fetched_at,
+           price_at: gold_price_at(symbol.exchange, price),
            snapshot: %{
              "symbol" => symbol.symbol,
              "exchange" => symbol.exchange,
              "market" => if(symbol.exchange == "gold_api", do: "reference", else: "spot"),
              "as_of" => DateTime.to_iso8601(now),
              "price" => Decimal.to_string(price.price, :normal),
-             "price_at" => DateTime.to_iso8601(price.data_at || price.fetched_at),
+             "price_at" => DateTime.to_iso8601(gold_price_at(symbol.exchange, price)),
              "stats_at" => DateTime.to_iso8601(stats.data_at),
              "change_24h_percent" => Decimal.to_string(stats.price_change_percent, :normal),
              "high_24h" => Decimal.to_string(stats.high_price, :normal),
@@ -369,6 +376,9 @@ defmodule CryptoDecisionLab.MarketData do
 
   defp gold_stats_max_age("gold_api"), do: 86_400
   defp gold_stats_max_age(_), do: 600
+
+  defp gold_price_at("gold_api", price), do: price.fetched_at || price.data_at
+  defp gold_price_at(_, price), do: price.data_at || price.fetched_at
 
   def freshness(nil, _), do: %{status: "missing", age_seconds: nil}
 

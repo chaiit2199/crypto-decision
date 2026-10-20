@@ -208,7 +208,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
   defp fetch_symbol(%Symbol{exchange: "gold_api"} = symbol) do
     with {:ok, body, _} <- SourceHTTP.get("gold_api", "/price/XAU/USD"),
          {:ok, price} <- SourceParser.price(body, "gold_api", Collector.now()) do
-      save_price(symbol.id, price)
+      save_gold_price(symbol.id, price)
 
       # Price snapshot must succeed even when free daily history is temporarily down.
       case fetch_gold_candles(symbol) do
@@ -272,6 +272,26 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
       on_conflict:
         from(p in LatestPrice,
           where: fragment("EXCLUDED.data_at >= COALESCE(?, ?)", p.data_at, p.fetched_at),
+          update: [
+            set: [
+              price: fragment("EXCLUDED.price"),
+              data_at: fragment("EXCLUDED.data_at"),
+              fetched_at: fragment("EXCLUDED.fetched_at"),
+              updated_at: fragment("EXCLUDED.updated_at")
+            ]
+          ]
+        )
+    )
+  end
+
+  # Gold API updatedAt can stall while the quoted price still moves; always keep the
+  # latest successful poll so the desk does not freeze on an old source timestamp.
+  defp save_gold_price(id, price) do
+    Repo.insert_all(LatestPrice, [Map.put(price, :market_symbol_id, id)],
+      conflict_target: [:market_symbol_id],
+      on_conflict:
+        from(p in LatestPrice,
+          where: fragment("EXCLUDED.fetched_at >= ?", p.fetched_at),
           update: [
             set: [
               price: fragment("EXCLUDED.price"),

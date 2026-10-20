@@ -6,7 +6,7 @@ Bộ chọn USD/USDT chọn `market_symbols.quote_asset` của thị trường t
 
 USD là mặc định, dùng Coinbase Exchange; USDT dùng Binance Spot. Request nến có cả `exchange` và `symbol` để tránh lấy nhầm nguồn. Collector Binance chỉ xử lý market Binance. SourceSync xử lý Coinbase và Gold API riêng, có khóa nguồn/cooldown trong PostgreSQL.
 
-Vàng thế giới XAU/USD: giá live free từ [Gold API](https://gold-api.com/docs) `/price/XAU/USD`; lịch sử **nến ngày** free từ [XAUS](https://xaus.com/api/) `/api/v1/history` (không API key). Open ngày = close ngày trước; volume null. Đồng bộ history tối đa mỗi 6 giờ **sau khi đã có nến**; nếu DB còn 0 nến `1d` thì retry mỗi lần poll giá. Lỗi XAUS không làm mất snapshot giá. `price_max_age_seconds` vàng = 1800. UI dài hạn tại `/gold`; bảng crypto không liệt kê XAU. `gold_history_unavailable` khi chưa có nến `1d` (ẩn kết quả Jev cũ). Giá tham chiếu không khớp pip/spread XM.
+Vàng thế giới XAU/USD: giá live free từ [Gold API](https://gold-api.com/docs) `/price/XAU/USD`; lịch sử **nến ngày** free từ [XAUS](https://xaus.com/api/) `/api/v1/history` (không API key). Open ngày = close ngày trước; volume null. Transport Gold/XAUS không phụ thuộc HTTP `Date` (CDN lệch đồng hồ). Mỗi poll ghi đè giá theo `fetched_at`; freshness UI theo lần poll thành công. Đồng bộ history tối đa mỗi 6 giờ **sau khi đã có nến**; nếu DB còn 0 nến `1d` thì retry mỗi lần poll giá. Lỗi XAUS không làm mất snapshot giá. `price_max_age_seconds` vàng = 1800. UI dài hạn tại `/gold`; bảng crypto không liệt kê XAU. `gold_history_unavailable` khi chưa có nến `1d` (ẩn kết quả Jev cũ). Giá tham chiếu không khớp pip/spread XM.
 
 ## Thêm mã crypto
 

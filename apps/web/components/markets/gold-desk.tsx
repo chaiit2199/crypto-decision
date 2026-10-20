@@ -75,8 +75,8 @@ export function GoldDesk({
                 <span> USD / oz</span>
                 <p>
                     {formatTime(
-                        market?.latest_price?.data_at ??
-                            market?.latest_price?.fetched_at,
+                        market?.latest_price?.fetched_at ??
+                            market?.latest_price?.data_at,
                     )}{" "}
                     · giờ Việt Nam
                     {freshness === "stale" && " · Dữ liệu giá cũ"}

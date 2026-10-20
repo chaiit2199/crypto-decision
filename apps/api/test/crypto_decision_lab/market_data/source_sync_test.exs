@@ -427,12 +427,63 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert {:ok, decoded, _} = SourceHTTP.get("gold_api", "/price/XAU/USD")
     assert Decimal.equal?(decoded["price"], "0.1234567890123456789")
 
+    # Gold API ignores HTTP Date skew (CDN drift); Coinbase still enforces it.
+    Process.put(:source_responses, [
+      MarketFixtures.response(%{"symbol" => "XAU"}, 200, %{
+        "date" => ["Thu, 01 Jan 2026 00:00:00 GMT"]
+      })
+    ])
+
+    assert {:ok, _, _} = SourceHTTP.get("gold_api", "/symbols")
+
     Process.put(:source_responses, [
       MarketFixtures.response(%{}, 200, %{"date" => ["Thu, 01 Jan 2026 00:00:00 GMT"]})
     ])
 
     assert {:error, {:stale_response, age}} = SourceHTTP.get("coinbase", "/products")
     assert age > 120
+  end
+
+  test "gold overwrites a frozen updatedAt when a newer poll returns a new price" do
+    queue([[%{"symbol" => "XAU", "name" => "Gold"}]])
+    assert {:ok, :discovered} = SourceSync.metadata("gold_api")
+    symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
+    older = DateTime.add(MarketFixtures.now(), -3_600)
+
+    queue([
+      %{
+        "symbol" => "XAU",
+        "currency" => "USD",
+        "price" => "4144.299805",
+        "updatedAt" => DateTime.to_iso8601(older)
+      },
+      %{"symbol" => "XAUUSD", "interval" => "daily", "points" => []}
+    ])
+
+    assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
+    assert Repo.get!(LatestPrice, symbol.id).price == Decimal.new("4144.299805")
+
+    # Advance past the snapshot interval so the next poll is due.
+    Sync.mark_state(symbol.id, :snapshot, %{
+      last_attempt_at: DateTime.add(MarketFixtures.now(), -400)
+    })
+
+    now = MarketFixtures.now()
+
+    queue([
+      %{
+        "symbol" => "XAU",
+        "currency" => "USD",
+        "price" => "4132.5",
+        "updatedAt" => DateTime.to_iso8601(older)
+      },
+      %{"symbol" => "XAUUSD", "interval" => "daily", "points" => []}
+    ])
+
+    assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
+    latest = Repo.get!(LatestPrice, symbol.id)
+    assert latest.price == Decimal.new("4132.5")
+    assert DateTime.compare(latest.fetched_at, now) != :lt
   end
 
   test "invalid JSON and missing or malformed HTTP dates remain distinct" do
