@@ -120,8 +120,10 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
          true <-
            D.positive?(low) and D.positive?(high) and D.positive?(open) and D.positive?(close),
          high = high |> D.max(open) |> D.max(close),
-         low = low |> D.min(open) |> D.min(close),
-         close_time = DateTime.add(day, 86_399_999, :millisecond),
+         close_time =
+           day
+           |> DateTime.add(86_399_999, :millisecond)
+           |> usec(),
          true <- DateTime.compare(close_time, DateTime.add(now, -5)) == :lt do
       {:ok,
        %{
@@ -158,13 +160,17 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
   defp daily_open_time(value) when is_binary(value) do
     with {:ok, date} <- Date.from_iso8601(value),
          {:ok, naive} <- NaiveDateTime.new(date, ~T[00:00:00]) do
-      {:ok, DateTime.from_naive!(naive, "Etc/UTC")}
+      # Ecto :utc_datetime_usec rejects DateTime values without microsecond precision.
+      {:ok, usec(DateTime.from_naive!(naive, "Etc/UTC"))}
     else
       _ -> {:error, :invalid_time}
     end
   end
 
   defp daily_open_time(_), do: {:error, :invalid_time}
+
+  defp usec(datetime),
+    do: DateTime.from_unix!(DateTime.to_unix(datetime, :microsecond), :microsecond)
 
   defp candle([seconds, low, high, open, close, volume], now)
        when is_integer(seconds) and seconds >= 0 do

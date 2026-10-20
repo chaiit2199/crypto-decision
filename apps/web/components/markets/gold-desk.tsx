@@ -89,7 +89,7 @@ export function GoldDesk({
                     <dt>Thay đổi gần đây</dt>
                     <dd
                         data-direction={
-                            stats?.price_change_percent.startsWith("-")
+                            stats?.price_change_percent?.startsWith("-")
                                 ? "down"
                                 : "up"
                         }

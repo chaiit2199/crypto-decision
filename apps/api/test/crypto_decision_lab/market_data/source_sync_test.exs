@@ -211,6 +211,8 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert Decimal.equal?(candle.low, "80")
     assert Decimal.equal?(candle.close, "100")
     assert candle.quote_volume == nil
+    assert elem(candle.open_time.microsecond, 1) == 6
+    assert elem(candle.close_time.microsecond, 1) == 6
 
     assert {:ok, []} =
              SourceParser.gold_daily_candles(

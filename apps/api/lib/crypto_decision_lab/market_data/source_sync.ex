@@ -211,7 +211,21 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
       save_gold_price(symbol.id, price)
 
       # Price snapshot must succeed even when free daily history is temporarily down.
-      case fetch_gold_candles(symbol) do
+      # Rescue unexpected raises so the enclosing transaction still commits the price.
+      candle_result =
+        try do
+          fetch_gold_candles(symbol)
+        rescue
+          error ->
+            Sync.mark_state(symbol.id, :source_candles, %{
+              status: "error",
+              last_error: Exception.message(error)
+            })
+
+            {:error, {:gold_history_failed, error.__struct__}}
+        end
+
+      case candle_result do
         {:ok, count} when is_integer(count) ->
           refresh_gold_stats(symbol.id, price.price, Collector.now())
           {:ok, count}
