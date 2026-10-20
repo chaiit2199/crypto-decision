@@ -32,7 +32,7 @@ export function MarketMonitor({
     );
     const [query, setQuery] = useState("");
     const [selectedSymbol, setSelectedSymbol] = useState("BTC");
-    const [quoteAsset, setQuoteAsset] = useState<QuoteAsset>("USDT");
+    const [quoteAsset, setQuoteAsset] = useState<QuoteAsset>("USD");
     const [now, setNow] = useState(initialTime);
     const [refreshVersion, setRefreshVersion] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -313,8 +313,8 @@ export function MarketMonitor({
                             }
                         }}
                     >
-                        <option value="USDT">USDT · Binance Spot</option>
                         <option value="USD">USD · Coinbase</option>
+                        <option value="USDT">USDT · Binance Spot</option>
                     </select>
                 </label>
             </div>

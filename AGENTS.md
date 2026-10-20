@@ -56,7 +56,7 @@ AGENTS.md
 
 ## D. Danh mục tài sản và Binance
 
-Danh mục nghiên cứu hiện tại (18 asset crypto + XAU riêng, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync. USD crypto lấy Coinbase; XAU/USD giá live từ Gold API (free), nến ngày miễn phí từ XAUS, UI dài hạn tại `/gold`:
+Danh mục nghiên cứu hiện tại (18 asset crypto + XAU riêng, quote UI mặc định `USD`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync. USD crypto lấy Coinbase; XAU/USD giá live từ Gold API (free), nến ngày miễn phí từ XAUS, UI dài hạn tại `/gold`:
 
 | Nhóm                   | Asset                                      |
 | ---------------------- | ------------------------------------------ |
