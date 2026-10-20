@@ -21,29 +21,30 @@ defmodule CryptoDecisionLab.MarketData.SyncTest do
 
   test "seeds the configured universe idempotently, disables removed assets, and preserves preferences" do
     Universe.seed()
-    assert length(Universe.assets()) == 20
-    assert Repo.aggregate(Asset, :count) == 20
+    assert length(Universe.assets()) == 18
+    assert Repo.aggregate(Asset, :count) == 18
     asset = Repo.get_by!(Asset, symbol: "BTC")
     Repo.update!(Ecto.Changeset.change(asset, enabled: false))
     # Legacy row no longer in @groups must be disabled on the next seed.
     Repo.insert!(%Asset{
-      symbol: "ETH",
-      name: "Ethereum",
+      symbol: "SUI",
+      name: "Sui",
       category: "core",
       enabled: true
     })
 
     Universe.seed()
-    assert Repo.aggregate(Asset, :count) == 21
+    assert Repo.aggregate(Asset, :count) == 19
     refute Repo.get!(Asset, asset.id).enabled
-    refute Repo.get_by!(Asset, symbol: "ETH").enabled
+    refute Repo.get_by!(Asset, symbol: "SUI").enabled
     assert Repo.get_by!(Asset, symbol: "ARB").enabled
+    assert Repo.get_by!(Asset, symbol: "ETH").enabled
   end
 
   test "discovers actual spot symbols without inventing unavailable pairs" do
     F.queue([F.response(F.exchange(["BTC", "ARB"]))])
     assert {:ok, 2} = Sync.metadata()
-    assert Repo.aggregate(from(a in Asset, where: a.enabled), :count) == 20
+    assert Repo.aggregate(from(a in Asset, where: a.enabled), :count) == 18
     assert Repo.aggregate(Symbol, :count) == 2
     refute Repo.get_by(Symbol, symbol: "KASUSDT")
     F.queue([F.response(F.exchange(["BTC"]))])

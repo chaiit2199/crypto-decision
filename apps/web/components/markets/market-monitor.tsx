@@ -81,7 +81,9 @@ export function MarketMonitor({
         };
     }, [refreshVersion]);
 
-    const assets = data?.assets ?? [];
+    const assets = (data?.assets ?? []).filter(
+        (asset) => asset.symbol !== "XAU",
+    );
     const selectedAsset = assets.find(
         (asset) => asset.symbol === selectedSymbol,
     );
@@ -177,13 +179,18 @@ export function MarketMonitor({
                         </span>
                     </span>
                 </Link>
-                <WatchlistPicker
-                    assets={assets}
-                    quoteAsset={quoteAsset}
-                    selectedSymbol={selectedSymbol}
-                    now={now}
-                    onSelect={handleSelectSymbol}
-                />
+                <div className="market-monitor__header-actions">
+                    <Link href="/gold" className="market-monitor__gold-link">
+                        Vàng USD · dài hạn
+                    </Link>
+                    <WatchlistPicker
+                        assets={assets}
+                        quoteAsset={quoteAsset}
+                        selectedSymbol={selectedSymbol}
+                        now={now}
+                        onSelect={handleSelectSymbol}
+                    />
+                </div>
             </header>
 
             <section
@@ -306,8 +313,8 @@ export function MarketMonitor({
                             }
                         }}
                     >
-                        <option value="USDT">USDT</option>
-                        <option value="USD">USD</option>
+                        <option value="USDT">USDT · Binance Spot</option>
+                        <option value="USD">USD · Coinbase</option>
                     </select>
                 </label>
             </div>
@@ -315,7 +322,14 @@ export function MarketMonitor({
                 <p className="market-monitor__notice" role="status">
                     Chưa có thị trường {quoteAsset} khả dụng trong danh mục.
                     {quoteAsset === "USD" &&
-                        " Coinbase đang xác minh cặp USD và đồng bộ dữ liệu. Một số mã có thể không được nguồn này hỗ trợ."}
+                        " USD crypto lấy từ Coinbase (không quy đổi từ USDT). Vàng XAU/USD nằm ở trang Vàng dài hạn. Một số mã chỉ có trên Binance USDT."}
+                </p>
+            )}
+            {data && quoteAsset === "USD" && availableAssets.length > 0 && (
+                <p className="market-monitor__notice" role="status">
+                    Đang xem giá USD crypto qua Coinbase. Nghiên cứu vàng theo
+                    ngày:{" "}
+                    <Link href="/gold">trang Vàng USD</Link>.
                 </p>
             )}
             {selectedAsset && (

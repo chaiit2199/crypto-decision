@@ -60,6 +60,6 @@ Market objects returned by `/api/markets` and `/api/markets/:symbol` include `an
 
 ## Nguồn USD/vàng (2026-10-18)
 
-`GET /api/markets/:symbol`, `/candles`, `/analysis` nhận query `exchange=binance|coinbase|gold_api` (mặc định binance cho compatibility). Mã ứng dụng là BTCUSD/XAUUSD; `provider_symbol` giữ mã gốc BTC-USD/XAU. `latest_price.data_at` là thời điểm nguồn, nullable cho legacy Binance (dùng fetched_at). Market trả `price_max_age_seconds` và `analysis_unavailable_reason`; XAU trả `gold_history_unavailable`. Stats quote_volume/trade_count và candle quote/taker volume/trade_count có thể null nếu nguồn không cung cấp. Không thay bằng 0.
+`GET /api/markets/:symbol`, `/candles`, `/analysis` nhận query `exchange=binance|coinbase|gold_api` (mặc định binance cho compatibility). Mã ứng dụng là BTCUSD/XAUUSD; `provider_symbol` giữ mã gốc BTC-USD/XAU. `latest_price.data_at` là thời điểm nguồn, nullable cho legacy Binance (dùng fetched_at). Market trả `price_max_age_seconds` và `analysis_unavailable_reason`; XAU trả `gold_history_unavailable` khi chưa có nến `1d`. Candle XAU chỉ hỗ trợ `timeframe=1d` (lưu sẵn, không tổng hợp từ 1H). Stats quote_volume/trade_count và candle quote/taker volume/trade_count có thể null nếu nguồn không cung cấp. Không thay bằng 0.
 
 Status thêm `sources` (collector state theo nguồn) và `price_poll_interval_seconds`. Lịch mặc định hiện tại 120 giây cho giá, 300 giây cho Jev. Frontend mặc định USD, hiển thị volume theo quote nếu có; nếu thiếu thì theo base_asset với nhãn đơn vị tương ứng.

@@ -39,7 +39,9 @@ defmodule CryptoDecisionLab.Decisions do
       slot = div(DateTime.to_unix(Collector.now()), interval) * interval
 
       Repo.transaction(fn ->
-        (MarketData.Sync.active_symbols() ++ MarketData.SourceSync.active_symbols("coinbase"))
+        (MarketData.Sync.active_symbols() ++
+           MarketData.SourceSync.active_symbols("coinbase") ++
+           MarketData.SourceSync.active_symbols("gold_api"))
         |> Enum.map(fn symbol ->
           case %{symbol_id: symbol.id, slot: slot} |> AnalysisWorker.new() |> Oban.insert() do
             {:ok, job} -> job.id

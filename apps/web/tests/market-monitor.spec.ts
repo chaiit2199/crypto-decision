@@ -137,8 +137,8 @@ test("watchlist highlights only active Jev BUY/SELL for every row and selected q
     const monitor = fixtureMonitor("100", analysis);
     const template = monitor.data.assets[0];
     const symbols = [
-        "BTC", "ARB", "OP", "SUI", "APT", "RENDER", "TIA", "ONDO", "PYTH", "EIGEN",
-        "FET", "NEAR", "TAO", "IMX", "INJ", "SEI", "IO", "BONK", "WIF", "WLD",
+        "BTC", "ETH", "SOL", "XRP", "BNB", "LTC", "ADA", "DOGE", "LINK", "AVAX",
+        "DOT", "UNI", "ARB", "OP", "APT", "RENDER", "FET", "IMX",
     ];
     monitor.data.assets = symbols.map((symbol, index) => ({
         ...template,
@@ -305,7 +305,7 @@ test("quote selection switches to the matching market snapshot and candle reques
     await expect(details.locator(".price-flash")).toHaveText("-");
 });
 
-test("USD is the default and XAU shows reference price without fabricated history or Jev predictions", async ({
+test("gold long-term desk is linked from crypto monitor and shows reference price", async ({
     page,
 }) => {
     const monitor = fixtureMonitor();
@@ -348,20 +348,21 @@ test("USD is the default and XAU shows reference price without fabricated histor
         route.fulfill({ json: fixtureCandles() }),
     );
     await page.goto("/");
-    await expect(page.getByLabel("Đồng tiền của cặp giao dịch")).toHaveValue(
-        "USD",
-    );
     await expect(
-        page.locator("#market-details .market-details__pair"),
-    ).toHaveText("BTCUSD");
-    await page
-        .getByRole("button", { name: "Xem chi tiết XAU", exact: true })
-        .click();
-    const details = page.locator("#market-details");
-    await expect(details.locator(".price-flash")).toHaveText("4,100.12");
-    await expect(details).toContainText("Chưa có lịch sử nến vàng đã xác minh");
-    await expect(details.locator(".market-chart__canvas")).toHaveCount(0);
-    await expect(details.locator(".market-analysis__signal")).toHaveCount(0);
+        page.getByRole("link", { name: "Vàng USD · dài hạn" }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole("button", { name: "Xem chi tiết XAU" }),
+    ).toHaveCount(0);
+    await page.goto("/gold");
+    await expect(
+        page.getByRole("heading", { name: /XAU\/USD/ }),
+    ).toBeVisible();
+    await expect(page.locator(".price-flash")).toHaveText("4,100.12");
+    await expect(
+        page.getByText(/Đang chờ đồng bộ lịch sử nến ngày/),
+    ).toBeVisible();
+    await expect(page.locator(".market-chart__canvas")).toHaveCount(0);
 });
 
 test("Jev analysis follows selected coin and shows expiry, auth failure and missing data", async ({
@@ -491,10 +492,6 @@ test("Jev analysis follows selected coin and shows expiry, auth failure and miss
     };
     await page.getByRole("button", { name: "Làm mới", exact: true }).click();
     await expect(panel).toContainText("Cần ít nhất 300 nến giờ");
-    await page
-        .getByRole("button", { name: "Xem chi tiết XAU", exact: true })
-        .click();
-    await expect(panel).toContainText("Không có cặp giao dịch khả dụng");
 });
 
 test("selecting symbols and timeframes renders charts and unavailable states", async ({
@@ -538,14 +535,6 @@ test("selecting symbols and timeframes renders charts and unavailable states", a
     await expect(
         page.locator(".market-chart__canvas canvas").first(),
     ).toBeVisible();
-    await page
-        .getByRole("button", { name: "Xem chi tiết XAU", exact: true })
-        .focus();
-    await page.keyboard.press("Enter");
-    await expect(
-        page.getByText("Chưa có thị trường khả dụng để tải lịch sử của XAU."),
-    ).toBeVisible();
-    await expect(page.locator(".market-chart__canvas")).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
     await page
         .getByRole("button", { name: "Xem chi tiết BTC", exact: true })

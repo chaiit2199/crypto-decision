@@ -9,6 +9,8 @@ type MarketAnalysisProps = {
     market: Market | undefined;
     assetEnabled: boolean;
     now: number;
+    /** Short label for the analysis candle frame, e.g. "1 giờ" or "1 ngày". */
+    candleFrameLabel?: string;
 };
 
 const CHOICE_LABELS: Record<string, string> = {
@@ -57,16 +59,28 @@ const REASON_LABELS: Record<string, string> = {
         "Phản hồi Jev không đúng định dạng; chưa thể dùng để phân tích.",
     insufficient_candles: "Cần ít nhất 300 nến giờ đã đóng để tính chỉ báo.",
     candle_gap: "Lịch sử nến có khoảng trống; đang chờ đồng bộ.",
-    stale_candles: "Lịch sử nến chưa cập nhật đến giờ gần nhất.",
+    stale_candles: "Lịch sử nến chưa cập nhật đến khung gần nhất.",
     invalid_candles: "Nến chưa đủ chất lượng để phân tích.",
     stale_price: "Giá đã cũ; chưa gọi Jev.",
-    stale_stats: "Thống kê 24 giờ đã cũ; chưa gọi Jev.",
-    missing_snapshots: "Chưa có đủ giá và thống kê 24 giờ.",
+    stale_stats: "Thống kê gần đây đã cũ; chưa gọi Jev.",
+    missing_snapshots: "Chưa có đủ giá và thống kê gần đây.",
     symbol_unavailable: "Cặp giao dịch không khả dụng.",
 };
 
-export function MarketAnalysis({ market, assetEnabled, now }: MarketAnalysisProps) {
+export function MarketAnalysis({
+    market,
+    assetEnabled,
+    now,
+    candleFrameLabel = "1 giờ",
+}: MarketAnalysisProps) {
     const analysis = market?.analysis;
+    const reasonLabels: Record<string, string> = {
+        ...REASON_LABELS,
+        insufficient_candles:
+            candleFrameLabel === "1 ngày"
+                ? "Cần ít nhất 300 nến ngày đã đóng để tính chỉ báo."
+                : REASON_LABELS.insufficient_candles,
+    };
     const stale =
         analysis &&
         (analysis.freshness === "stale" ||
@@ -85,14 +99,14 @@ export function MarketAnalysis({ market, assetEnabled, now }: MarketAnalysisProp
         market.analysis_unavailable_reason === "gold_history_unavailable"
     ) {
         notice =
-            "Hiện chỉ có giá vàng tham chiếu. Chưa có lịch sử nến vàng đã xác minh để tính chỉ báo và phân tích Jev.";
+            "Hiện chỉ có giá vàng tham chiếu. Đang chờ lịch sử nến ngày (XAUS) trước khi tính chỉ báo và Jev dài hạn.";
     } else if (!market.analysis_enabled) {
         notice = "Phân tích Jev đang tắt.";
     } else if (!analysis) {
         notice = "Đang chờ lần phân tích Jev đầu tiên.";
     } else if (analysis.status !== "ready") {
         notice =
-            REASON_LABELS[analysis.reason ?? ""] ??
+            reasonLabels[analysis.reason ?? ""] ??
             "Chưa có kết quả phân tích khả dụng.";
     }
 
@@ -102,7 +116,7 @@ export function MarketAnalysis({ market, assetEnabled, now }: MarketAnalysisProp
                 <h3>
                     Phân tích Jev · {market?.symbol ?? "Chưa có thị trường"}
                 </h3>
-                <span>Chỉ báo 1 giờ</span>
+                <span>Chỉ báo {candleFrameLabel}</span>
             </header>
             {notice && (
                 <p className="market-analysis__notice" role="status">

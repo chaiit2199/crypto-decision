@@ -77,6 +77,84 @@ defmodule CryptoDecisionLab.MarketData.SourceParser do
 
   def candles(_, _), do: {:error, :invalid_candles}
 
+  @doc """
+  Build closed daily research candles from XAUS `/api/v1/history` points.
+
+  Points provide high/low/close; open is the previous day's close (first day uses
+  close). Volume stays nil. Only days fully closed before `now` are kept.
+  """
+  def gold_daily_candles(%{"points" => points}, now) when is_list(points) do
+    points
+    |> Enum.reduce_while({:ok, [], nil}, fn row, {:ok, acc, prev_close} ->
+      case daily_point(row, prev_close, now) do
+        {:ok, candle, close} -> {:cont, {:ok, [candle | acc], close}}
+        {:skip, close} -> {:cont, {:ok, acc, close || prev_close}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, candles, _} -> {:ok, Enum.reverse(candles)}
+      error -> error
+    end
+  end
+
+  def gold_daily_candles(_, _), do: {:error, :invalid_gold_history}
+
+  defp daily_point(row, prev_close, now) when is_map(row) do
+    with {:ok, day} <- daily_open_time(row["d"]),
+         {:ok, high} <- decimal(row["h"]),
+         {:ok, low} <- decimal(row["l"]),
+         {:ok, close} <- decimal(row["c"]),
+         open = prev_close || close,
+         true <-
+           D.positive?(low) and D.positive?(high) and D.positive?(open) and D.positive?(close),
+         high = high |> D.max(open) |> D.max(close),
+         low = low |> D.min(open) |> D.min(close),
+         close_time = DateTime.add(day, 86_399_999, :millisecond),
+         true <- DateTime.compare(close_time, DateTime.add(now, -5)) == :lt do
+      {:ok,
+       %{
+         timeframe: "1d",
+         open_time: day,
+         close_time: close_time,
+         open: open,
+         high: high,
+         low: low,
+         close: close,
+         base_volume: Decimal.new(0),
+         quote_volume: nil,
+         trade_count: nil,
+         taker_buy_base_volume: nil,
+         taker_buy_quote_volume: nil
+       }, close}
+    else
+      false ->
+        close =
+          case decimal(row["c"]) do
+            {:ok, value} -> value
+            _ -> prev_close
+          end
+
+        {:skip, close}
+
+      _ ->
+        {:error, :invalid_gold_history}
+    end
+  end
+
+  defp daily_point(_, _, _), do: {:error, :invalid_gold_history}
+
+  defp daily_open_time(value) when is_binary(value) do
+    with {:ok, date} <- Date.from_iso8601(value),
+         {:ok, naive} <- NaiveDateTime.new(date, ~T[00:00:00]) do
+      {:ok, DateTime.from_naive!(naive, "Etc/UTC")}
+    else
+      _ -> {:error, :invalid_time}
+    end
+  end
+
+  defp daily_open_time(_), do: {:error, :invalid_time}
+
   defp candle([seconds, low, high, open, close, volume], now)
        when is_integer(seconds) and seconds >= 0 do
     with true <- rem(seconds, 3600) == 0,

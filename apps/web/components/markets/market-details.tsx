@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { Asset, Timeframe } from "@/lib/api/types";
@@ -174,9 +175,9 @@ export function MarketDetails({
                 <div className="market-details__history">
                     {market?.exchange === "gold_api" && (
                         <p className="market-chart__empty">
-                            XAU/USD là giá vàng tham chiếu. Chưa có lịch sử nến
-                            vàng để vẽ biểu đồ và tính chỉ báo; nguồn lịch sử
-                            cần API key riêng.
+                            Vàng XAU/USD dùng trang nghiên cứu dài hạn (nến
+                            ngày).{" "}
+                            <Link href="/gold">Mở Vàng USD</Link>
                         </p>
                     )}
                     {market && market.exchange !== "gold_api" && (

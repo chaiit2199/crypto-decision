@@ -65,7 +65,10 @@ export function MarketRow({
     if (!asset.enabled) {
         label = "Đã tắt";
     } else if (!market && metadataReady) {
-        label = `Chưa có cặp ${quoteAsset}`;
+        label =
+            quoteAsset === "USD"
+                ? "Chưa có cặp USD (Coinbase)"
+                : `Chưa có cặp ${quoteAsset}`;
     }
 
     return (

@@ -6,7 +6,8 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
   def get(source, path, params \\ []) do
     base = %{
       "coinbase" => "https://api.exchange.coinbase.com",
-      "gold_api" => "https://api.gold-api.com"
+      "gold_api" => "https://api.gold-api.com",
+      "xaus" => "https://xaus.com"
     }
 
     sleep = Application.get_env(:crypto_decision_lab, :source_sleep, &Process.sleep/1)
@@ -19,21 +20,27 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
         params: params,
         headers: [{"user-agent", "CryptoDecisionLab/0.1"}],
         decode_body: false,
-        receive_timeout: 8_000,
-        connect_options: [timeout: 3_000],
+        receive_timeout: 15_000,
+        connect_options: [timeout: 5_000],
         retry: false,
         redirect: false
       )
 
     case result do
       {:ok, %{status: 200, body: body, headers: headers}} when is_binary(body) ->
-        with {:ok, data_at} <- response_time(headers),
-             {:ok, decoded} <- Jason.decode(body, floats: :decimals) do
+        with {:ok, decoded} <- Jason.decode(body, floats: :decimals),
+             {:ok, data_at} <- response_time(source, headers, decoded) do
           {:ok, decoded, data_at}
         else
           {:error, %Jason.DecodeError{}} -> {:error, :invalid_json}
           {:error, _} = error -> error
         end
+
+      {:ok, %{status: 401}} ->
+        {:error, :authentication_failed}
+
+      {:ok, %{status: 403}} ->
+        {:error, :access_denied}
 
       {:ok, %{status: 429, headers: headers}} ->
         seconds =
@@ -58,7 +65,14 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
     end
   end
 
-  defp response_time(%{"date" => [date | _]}) when is_binary(date) do
+  # Daily history is cached upstream for hours; use local fetch time as transport clock.
+  defp response_time("xaus", _headers, _decoded), do: {:ok, Collector.now()}
+
+  defp response_time(_source, headers, _decoded) do
+    with {:ok, time} <- http_date(headers), do: validate_skew(time)
+  end
+
+  defp http_date(%{"date" => [date | _]}) when is_binary(date) do
     with [_, day, month, year, hour, minute, second] <-
            Regex.run(~r/^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/, date),
          index when is_integer(index) <-
@@ -71,26 +85,31 @@ defmodule CryptoDecisionLab.MarketData.SourceHTTP do
              String.to_integer(hour),
              String.to_integer(minute),
              String.to_integer(second)
-           ),
-         time =
-           DateTime.from_naive!(naive, "Etc/UTC")
-           |> DateTime.to_unix(:microsecond)
-           |> DateTime.from_unix!(:microsecond) do
-      now = Collector.now()
-      age_seconds = DateTime.diff(now, time)
+           ) do
+      time =
+        DateTime.from_naive!(naive, "Etc/UTC")
+        |> DateTime.to_unix(:microsecond)
+        |> DateTime.from_unix!(:microsecond)
 
-      cond do
-        age_seconds > 120 -> {:error, {:stale_response, age_seconds}}
-        SnapshotTime.future?(time, now) -> {:error, {:future_response, -age_seconds}}
-        true -> {:ok, time}
-      end
+      {:ok, time}
     else
       _ -> {:error, :invalid_response_date}
     end
   end
 
-  defp response_time(headers) when not is_map_key(headers, "date"),
+  defp http_date(headers) when not is_map_key(headers, "date"),
     do: {:error, :missing_response_date}
 
-  defp response_time(_headers), do: {:error, :invalid_response_date}
+  defp http_date(_headers), do: {:error, :invalid_response_date}
+
+  defp validate_skew(time) do
+    now = Collector.now()
+    age_seconds = DateTime.diff(now, time)
+
+    cond do
+      age_seconds > 120 -> {:error, {:stale_response, age_seconds}}
+      SnapshotTime.future?(time, now) -> {:error, {:future_response, -age_seconds}}
+      true -> {:ok, time}
+    end
+  end
 end

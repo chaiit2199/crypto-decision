@@ -120,7 +120,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
             updated_at: now
           }
         ],
-        on_conflict: :nothing,
+        on_conflict: {:replace, [:name, :category, :enabled, :updated_at]},
         conflict_target: [:symbol]
       )
 
@@ -209,7 +209,19 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
     with {:ok, body, _} <- SourceHTTP.get("gold_api", "/price/XAU/USD"),
          {:ok, price} <- SourceParser.price(body, "gold_api", Collector.now()) do
       save_price(symbol.id, price)
-      {:ok, :snapshot_only}
+
+      case fetch_gold_candles(symbol) do
+        {:ok, count} when is_integer(count) ->
+          refresh_gold_stats(symbol.id, price.price, Collector.now())
+          {:ok, count}
+
+        {:ok, other} ->
+          refresh_gold_stats(symbol.id, price.price, Collector.now())
+          {:ok, other}
+
+        error ->
+          error
+      end
     end
   end
 
@@ -303,28 +315,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
                ),
              cutoff = Enum.min_by([now, server_time], &DateTime.to_unix(&1, :microsecond)),
              {:ok, candles} <- SourceParser.candles(body, cutoff) do
-          rows =
-            candles
-            |> Enum.filter(
-              &(DateTime.to_unix(&1.open_time) >= first and
-                  DateTime.to_unix(&1.open_time) < boundary)
-            )
-            |> Enum.uniq_by(& &1.open_time)
-            |> Enum.map(&Map.merge(&1, %{market_symbol_id: symbol.id, inserted_at: now}))
-
-          Repo.insert_all(Candle, rows,
-            on_conflict: :nothing,
-            conflict_target: [:market_symbol_id, :timeframe, :open_time]
-          )
-
-          Sync.mark_state(symbol.id, :source_candles, %{
-            last_success_at: now,
-            status: if(length(rows) == 300, do: "complete", else: "gaps"),
-            missing_count: 300 - length(rows),
-            last_error: nil
-          })
-
-          {:ok, length(rows)}
+          persist_source_candles(symbol.id, candles, first, boundary, now, 300)
         else
           {:error, reason} = error ->
             Sync.mark_state(symbol.id, :source_candles, %{
@@ -335,6 +326,138 @@ defmodule CryptoDecisionLab.MarketData.SourceSync do
             error
         end
     end
+  end
+
+  # Free daily history via XAUS; refresh at most every 6 hours (upstream caches ~6h).
+  defp fetch_gold_candles(symbol) do
+    now = Collector.now()
+    state = Sync.state(symbol.id, "source_candles")
+
+    last =
+      Repo.one(
+        from c in Candle,
+          where: c.market_symbol_id == ^symbol.id and c.timeframe == "1d",
+          select: max(c.open_time)
+      )
+
+    today = DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400)
+
+    cond do
+      state && state.status in ["complete", "gaps"] && state.last_attempt_at &&
+          DateTime.diff(now, state.last_attempt_at) < 6 * 3600 ->
+        {:ok, :candles_checked}
+
+      last && DateTime.compare(last, DateTime.add(today, -86_400)) != :lt ->
+        {:ok, :current}
+
+      true ->
+        Sync.mark_state(symbol.id, :source_candles, %{last_attempt_at: now, status: "running"})
+
+        with {:ok, body, _} <- SourceHTTP.get("xaus", "/api/v1/history"),
+             {:ok, candles} <- SourceParser.gold_daily_candles(body, now) do
+          first =
+            case candles do
+              [c | _] -> DateTime.to_unix(c.open_time)
+              [] -> 0
+            end
+
+          boundary = DateTime.to_unix(today)
+          persist_source_candles(symbol.id, candles, first, boundary, now, 300)
+        else
+          {:error, reason} = error ->
+            Sync.mark_state(symbol.id, :source_candles, %{
+              status: "error",
+              last_error: inspect(reason)
+            })
+
+            error
+        end
+    end
+  end
+
+  # Spot gold has no exchange 24h ticker; derive research stats from recent daily candles.
+  defp refresh_gold_stats(symbol_id, last_price, now) do
+    from_time = DateTime.add(now, -7 * 86_400)
+
+    candles =
+      Repo.all(
+        from c in Candle,
+          where:
+            c.market_symbol_id == ^symbol_id and c.timeframe == "1d" and
+              c.open_time >= ^from_time,
+          order_by: [asc: c.open_time]
+      )
+
+    case candles do
+      [] ->
+        :ok
+
+      [first | _] = rows ->
+        high = Enum.reduce(rows, first.high, &Decimal.max(&1.high, &2))
+        low = Enum.reduce(rows, first.low, &Decimal.min(&1.low, &2))
+        open = first.open
+        change = Decimal.sub(last_price, open)
+
+        stats = %{
+          market_symbol_id: symbol_id,
+          price_change: change,
+          price_change_percent: Decimal.mult(Decimal.div(change, open), 100),
+          high_price: high,
+          low_price: low,
+          base_volume: Decimal.new(0),
+          quote_volume: nil,
+          trade_count: nil,
+          data_at: now,
+          fetched_at: now,
+          updated_at: now
+        }
+
+        Repo.insert_all(TickerStats, [stats],
+          conflict_target: [:market_symbol_id],
+          on_conflict:
+            from(t in TickerStats,
+              where: fragment("EXCLUDED.data_at >= ?", t.data_at),
+              update: [
+                set: [
+                  price_change: fragment("EXCLUDED.price_change"),
+                  price_change_percent: fragment("EXCLUDED.price_change_percent"),
+                  high_price: fragment("EXCLUDED.high_price"),
+                  low_price: fragment("EXCLUDED.low_price"),
+                  base_volume: fragment("EXCLUDED.base_volume"),
+                  data_at: fragment("EXCLUDED.data_at"),
+                  fetched_at: fragment("EXCLUDED.fetched_at"),
+                  updated_at: fragment("EXCLUDED.updated_at")
+                ]
+              ]
+            )
+        )
+
+        :ok
+    end
+  end
+
+  defp persist_source_candles(symbol_id, candles, first, boundary, now, expected) do
+    rows =
+      candles
+      |> Enum.filter(
+        &(DateTime.to_unix(&1.open_time) >= first and DateTime.to_unix(&1.open_time) < boundary)
+      )
+      |> Enum.uniq_by(& &1.open_time)
+      |> Enum.map(&Map.merge(&1, %{market_symbol_id: symbol_id, inserted_at: now}))
+
+    Repo.insert_all(Candle, rows,
+      on_conflict: :nothing,
+      conflict_target: [:market_symbol_id, :timeframe, :open_time]
+    )
+
+    Sync.mark_state(symbol_id, :source_candles, %{
+      last_success_at: now,
+      status: if(length(rows) >= expected, do: "complete", else: "gaps"),
+      missing_count: max(expected - length(rows), 0),
+      last_error: nil
+    })
+
+    {:ok, length(rows)}
   end
 
   defp locked(source, fun) do

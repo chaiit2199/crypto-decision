@@ -113,7 +113,7 @@ defmodule CryptoDecisionLab.MarketData do
   @spec candles(String.t(), map()) :: {:ok, [map()], map()} | {:error, atom()}
   def candles(symbol, params) do
     with {:ok, record} <- find_symbol(symbol, Map.get(params, "exchange", "binance")),
-         {:ok, range} <- candle_range(params) do
+         {:ok, range} <- candle_range(params, record.exchange) do
       rows =
         Repo.all(
           from c in Candle,
@@ -126,7 +126,7 @@ defmodule CryptoDecisionLab.MarketData do
 
       rows = Enum.map(rows, &fields/1)
 
-      with {:ok, values} <- Integrity.aggregate(rows, range.timeframe) do
+      with {:ok, values} <- maybe_aggregate(record.exchange, rows, range.timeframe) do
         {:ok, values,
          %{
            timeframe: range.timeframe,
@@ -146,10 +146,14 @@ defmodule CryptoDecisionLab.MarketData do
     end
   end
 
-  defp candle_range(params) do
-    timeframe = Map.get(params, "timeframe", "1h")
+  defp maybe_aggregate("gold_api", rows, "1d"), do: {:ok, rows}
+  defp maybe_aggregate(_, rows, timeframe), do: Integrity.aggregate(rows, timeframe)
 
-    with width when is_integer(width) <-
+  defp candle_range(params, exchange) do
+    timeframe = Map.get(params, "timeframe", if(exchange == "gold_api", do: "1d", else: "1h"))
+
+    with true <- exchange != "gold_api" or timeframe == "1d",
+         width when is_integer(width) <-
            %{"5m" => 300, "15m" => 900, "1h" => 3600, "4h" => 14_400, "1d" => 86_400}[timeframe],
          {:ok, limit} <- integer(params, "limit", 100, 1, 1000) do
       default_to =
@@ -164,13 +168,20 @@ defmodule CryptoDecisionLab.MarketData do
                [from, to],
                &(rem(DateTime.to_unix(&1, :microsecond), width * 1_000_000) == 0)
              ) do
+        source =
+          cond do
+            timeframe in ["5m", "15m"] -> timeframe
+            exchange == "gold_api" -> "1d"
+            true -> "1h"
+          end
+
         {:ok,
          %{
            from: from,
            to: to,
            width: width,
            multiplier: max(div(width, 3600), 1),
-           source: if(timeframe in ["5m", "15m"], do: timeframe, else: "1h"),
+           source: source,
            limit: limit,
            timeframe: timeframe
          }}
@@ -236,8 +247,7 @@ defmodule CryptoDecisionLab.MarketData do
 
     Map.merge(fields(symbol), %{
       analysis_enabled: Decisions.enabled?(),
-      analysis_unavailable_reason:
-        if(symbol.exchange == "gold_api", do: "gold_history_unavailable", else: nil),
+      analysis_unavailable_reason: analysis_unavailable_reason(symbol),
       price_max_age_seconds: price_max_age_seconds(),
       analysis_interval_seconds: Decisions.interval_seconds(),
       analysis: analyses[symbol.id],
@@ -248,6 +258,18 @@ defmodule CryptoDecisionLab.MarketData do
       stats_freshness: freshness(ticker && ticker.data_at, 600)
     })
   end
+
+  defp analysis_unavailable_reason(%{exchange: "gold_api", id: id}) do
+    count =
+      Repo.aggregate(
+        from(c in Candle, where: c.market_symbol_id == ^id and c.timeframe == "1d"),
+        :count
+      )
+
+    if count == 0, do: "gold_history_unavailable", else: nil
+  end
+
+  defp analysis_unavailable_reason(_), do: nil
 
   @spec analysis(String.t()) :: {:ok, map(), map()} | {:error, atom()}
   def analysis(symbol, params \\ %{}) do
@@ -292,11 +314,13 @@ defmodule CryptoDecisionLab.MarketData do
 
       true ->
         cutoff = DateTime.add(now, -5)
+        frame = if symbol.exchange == "gold_api", do: "1d", else: "1h"
 
         candles =
           Repo.all(
             from c in Candle,
-              where: c.market_symbol_id == ^id and c.timeframe == "1h" and c.close_time < ^cutoff,
+              where:
+                c.market_symbol_id == ^id and c.timeframe == ^frame and c.close_time < ^cutoff,
               order_by: [desc: c.open_time],
               limit: 300
           )
@@ -309,7 +333,7 @@ defmodule CryptoDecisionLab.MarketData do
            snapshot: %{
              "symbol" => symbol.symbol,
              "exchange" => symbol.exchange,
-             "market" => "spot",
+             "market" => if(symbol.exchange == "gold_api", do: "reference", else: "spot"),
              "as_of" => DateTime.to_iso8601(now),
              "price" => Decimal.to_string(price.price, :normal),
              "price_at" => DateTime.to_iso8601(price.data_at || price.fetched_at),

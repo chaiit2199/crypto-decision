@@ -56,14 +56,14 @@ AGENTS.md
 
 ## D. Danh mục tài sản và Binance
 
-Danh mục nghiên cứu hiện tại (20 asset, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync:
+Danh mục nghiên cứu hiện tại (18 asset crypto + XAU riêng, quote mặc định `USDT`), định nghĩa trong `MarketData.Universe`. Chỉ giữ mã có Binance Spot USDT đang giao dịch tại thời điểm chọn; `exchangeInfo` vẫn xác minh lại khi sync. USD crypto lấy Coinbase; XAU/USD giá live từ Gold API (free), nến ngày miễn phí từ XAUS, UI dài hạn tại `/gold`:
 
-| Nhóm                   | Asset                             |
-| ---------------------- | --------------------------------- |
-| Core / thanh khoản cao | BTC, ARB, OP, SUI, APT, RENDER    |
-| Tiềm năng cao          | TIA, ONDO, PYTH, EIGEN, FET, NEAR |
-| Vốn hóa vừa            | TAO, IMX, INJ, SEI                |
-| Mở rộng                | IO, BONK, WIF, WLD                |
+| Nhóm                   | Asset                                      |
+| ---------------------- | ------------------------------------------ |
+| Core / thanh khoản cao | BTC, ETH, SOL, XRP, BNB, LTC               |
+| Tiềm năng cao          | ADA, DOGE, LINK, AVAX, DOT, UNI            |
+| Vốn hóa vừa            | ARB, OP, APT, RENDER                       |
+| Mở rộng                | FET, IMX                                   |
 
 Seed upsert danh mục này và `enabled=false` các asset đã bị gỡ khỏi `@groups`. Không xóa lịch sử nến/phân tích. Cặp Spot USDT thực tế do `exchangeInfo` xác minh; mã không có trên Binance vẫn giữ trong danh mục với trạng thái không khả dụng.
 

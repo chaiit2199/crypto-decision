@@ -12,12 +12,14 @@ type TechnicalIndicatorsProps = {
     market: Market;
     stance: ResolvedStance;
     now: number;
+    candleLabel?: string;
 };
 
 export function TechnicalIndicators({
     market,
     stance,
     now,
+    candleLabel = "nến 1 giờ đã đóng",
 }: TechnicalIndicatorsProps) {
     const analysis = market.analysis;
     const ready =
@@ -37,8 +39,8 @@ export function TechnicalIndicators({
                 <div>
                     <h3>Chỉ báo kỹ thuật</h3>
                     <p>
-                        {market.symbol} · {market.quote_asset} · nến 1 giờ đã
-                        đóng · {researchStanceLabel(stance)}
+                        {market.symbol} · {market.quote_asset} · {candleLabel}{" "}
+                        · {researchStanceLabel(stance)}
                     </p>
                 </div>
                 {analysis?.features.last_close_time && (

@@ -3,40 +3,38 @@ defmodule CryptoDecisionLab.MarketData.Universe do
   import Ecto.Query
   alias CryptoDecisionLab.{Repo, MarketData.Asset}
 
-  # Personal research universe. Only assets with Binance Spot USDT at selection time;
-  # exchangeInfo still verifies live trading status and never invents missing pairs.
+  # Personal research universe aligned with liquid spot / common CFD names.
+  # Binance exchangeInfo still verifies Spot USDT; Coinbase verifies USD separately.
   @groups [
     {"core",
      [
        {"BTC", "Bitcoin"},
-       {"ARB", "Arbitrum"},
-       {"OP", "Optimism"},
-       {"SUI", "Sui"},
-       {"APT", "Aptos"},
-       {"RENDER", "Render"}
+       {"ETH", "Ethereum"},
+       {"SOL", "Solana"},
+       {"XRP", "XRP"},
+       {"BNB", "BNB"},
+       {"LTC", "Litecoin"}
      ]},
     {"high_potential",
      [
-       {"TIA", "Celestia"},
-       {"ONDO", "Ondo"},
-       {"PYTH", "Pyth Network"},
-       {"EIGEN", "EigenLayer"},
-       {"FET", "Fetch.ai"},
-       {"NEAR", "NEAR Protocol"}
+       {"ADA", "Cardano"},
+       {"DOGE", "Dogecoin"},
+       {"LINK", "Chainlink"},
+       {"AVAX", "Avalanche"},
+       {"DOT", "Polkadot"},
+       {"UNI", "Uniswap"}
      ]},
     {"mid_cap",
      [
-       {"TAO", "Bittensor"},
-       {"IMX", "Immutable"},
-       {"INJ", "Injective"},
-       {"SEI", "Sei"}
+       {"ARB", "Arbitrum"},
+       {"OP", "Optimism"},
+       {"APT", "Aptos"},
+       {"RENDER", "Render"}
      ]},
     {"extended",
      [
-       {"IO", "io.net"},
-       {"BONK", "Bonk"},
-       {"WIF", "dogwifhat"},
-       {"WLD", "Worldcoin"}
+       {"FET", "Fetch.ai"},
+       {"IMX", "Immutable"}
      ]}
   ]
 
@@ -67,7 +65,7 @@ defmodule CryptoDecisionLab.MarketData.Universe do
       conflict_target: [:symbol]
     )
 
-    from(a in Asset, where: a.symbol not in ^wanted)
+    from(a in Asset, where: a.symbol not in ^wanted and a.category != "precious_metals")
     |> Repo.update_all(set: [enabled: false, updated_at: now])
 
     :ok

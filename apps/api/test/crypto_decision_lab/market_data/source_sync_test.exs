@@ -119,7 +119,7 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
     assert Repo.get!(Symbol, symbol.id).trading_status == "TRADING"
   end
 
-  test "gold persists its source timestamp and has no invented candles or Jev eligibility" do
+  test "gold persists its source timestamp and keeps history unavailable without daily bars" do
     queue([[%{"symbol" => "XAU", "name" => "Gold"}]])
     assert {:ok, :discovered} = SourceSync.metadata("gold_api")
     symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
@@ -131,16 +131,96 @@ defmodule CryptoDecisionLab.MarketData.SourceSyncTest do
         "currency" => "USD",
         "price" => "4100.123456789",
         "updatedAt" => DateTime.to_iso8601(old)
-      }
+      },
+      %{"symbol" => "XAUUSD", "interval" => "daily", "points" => []}
     ])
 
-    assert {:ok, :snapshot_only} = SourceSync.sync("gold_api", symbol.id)
+    assert {:ok, 0} = SourceSync.sync("gold_api", symbol.id)
     assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
     assert market.price_freshness.status == "stale"
     assert market.analysis_unavailable_reason == "gold_history_unavailable"
-    assert market.ticker_stats == nil
     assert Repo.aggregate(Candle, :count) == 0
     assert SourceSync.active_symbols("coinbase") == []
+  end
+
+  test "gold free daily history builds closed 1D candles and clears history unavailable" do
+    queue([[%{"symbol" => "XAU", "name" => "Gold"}]])
+    assert {:ok, :discovered} = SourceSync.metadata("gold_api")
+    symbol = Repo.get_by!(Symbol, exchange: "gold_api", symbol: "XAUUSD")
+    now = MarketFixtures.now()
+    today = DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400)
+
+    points =
+      Enum.map(0..299, fn index ->
+        # Closed days only: yesterday back through 300 sessions.
+        day = DateTime.add(today, -(300 - index) * 86_400)
+        date = DateTime.to_date(day)
+
+        %{
+          "d" => Date.to_iso8601(date),
+          "h" => "4110",
+          "l" => "4090",
+          "c" => "4100"
+        }
+      end)
+
+    queue([
+      %{
+        "symbol" => "XAU",
+        "currency" => "USD",
+        "price" => "4100.50",
+        "updatedAt" => DateTime.to_iso8601(now)
+      },
+      %{"symbol" => "XAUUSD", "interval" => "daily", "points" => points}
+    ])
+
+    assert {:ok, 300} = SourceSync.sync("gold_api", symbol.id)
+
+    assert Repo.aggregate(
+             from(c in Candle,
+               where: c.market_symbol_id == ^symbol.id and c.timeframe == "1d"
+             ),
+             :count
+           ) == 300
+
+    assert {:ok, market, _} = MarketData.get_market("XAUUSD", %{"exchange" => "gold_api"})
+    assert market.analysis_unavailable_reason == nil
+    assert market.ticker_stats != nil
+    assert {:ok, inputs} = MarketData.analysis_inputs(symbol.id, now)
+    assert length(inputs.candles) == 300
+    assert hd(inputs.candles).timeframe == "1d"
+  end
+
+  test "gold daily parser uses prior close as open and skips the open day" do
+    now = MarketFixtures.now()
+    today = DateTime.to_date(DateTime.from_unix!(div(DateTime.to_unix(now), 86_400) * 86_400))
+    closed = Date.add(today, -1)
+
+    assert {:ok, [candle]} =
+             SourceParser.gold_daily_candles(
+               %{
+                 "points" => [
+                   %{"d" => Date.to_iso8601(closed), "h" => "120", "l" => "80", "c" => "100"}
+                 ]
+               },
+               now
+             )
+
+    assert candle.timeframe == "1d"
+    assert Decimal.equal?(candle.high, "120")
+    assert Decimal.equal?(candle.low, "80")
+    assert Decimal.equal?(candle.close, "100")
+    assert candle.quote_volume == nil
+
+    assert {:ok, []} =
+             SourceParser.gold_daily_candles(
+               %{
+                 "points" => [
+                   %{"d" => Date.to_iso8601(today), "h" => "120", "l" => "80", "c" => "100"}
+                 ]
+               },
+               now
+             )
   end
 
   test "41-second source clock lead permits USD discovery, snapshots and analysis inputs" do

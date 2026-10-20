@@ -6,7 +6,7 @@ Bộ chọn USD/USDT chọn `market_symbols.quote_asset` của thị trường t
 
 USD là mặc định, dùng Coinbase Exchange; USDT dùng Binance Spot. Request nến có cả `exchange` và `symbol` để tránh lấy nhầm nguồn. Collector Binance chỉ xử lý market Binance. SourceSync xử lý Coinbase và Gold API riêng, có khóa nguồn/cooldown trong PostgreSQL.
 
-Vàng thế giới XAU/USD lấy snapshot tham chiếu từ [Gold API](https://gold-api.com/docs), không cần key cho endpoint giá. Nguồn này chưa có history/OHLC trong ứng dụng vì cần key riêng; không tạo nến/volume/nhận định Jev giả. Metadata Gold API tự đăng ký XAU ngoài danh mục crypto mặc định. Xem `flow.md` cho chi tiết.
+Vàng thế giới XAU/USD: giá live free từ [Gold API](https://gold-api.com/docs) `/price/XAU/USD`; lịch sử **nến ngày** free từ [XAUS](https://xaus.com/api/) `/api/v1/history` (không API key). Open ngày = close ngày trước; volume null. Đồng bộ history tối đa mỗi 6 giờ. UI dài hạn tại `/gold`; bảng crypto không liệt kê XAU. `gold_history_unavailable` khi chưa có nến `1d`. Giá tham chiếu không khớp pip/spread XM.
 
 ## Thêm mã crypto
 
@@ -34,11 +34,20 @@ MARKET_SYNC_ENABLED=false JEV_ENABLED=false iex -S mix
 alias CryptoDecisionLab.Repo
 alias CryptoDecisionLab.MarketData.Asset
 
-asset = Repo.get_by!(Asset, symbol: "BONK")
+asset = Repo.get_by!(Asset, symbol: "FET")
 asset |> Ecto.Changeset.change(enabled: false) |> Repo.update!()
 ```
 
 Dùng `enabled: true` để bật lại. Collector và Jev không chọn asset đã tắt; dashboard vẫn giữ hàng với trạng thái “Đã tắt” để truy vết.
+
+Sau khi đổi `@groups`, trên production/local:
+
+```sh
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix run priv/repo/seeds.exs
+MARKET_SYNC_ENABLED=false JEV_ENABLED=false mix market.sources
+```
+
+`mix market.sources` force-refresh Coinbase/Gold metadata (Coinbase cache 1 ngày). Chart vàng cần lần sync nguồn gold thành công để kéo XAUS daily.
 
 ## Chẩn đoán USD không đồng bộ trên production
 

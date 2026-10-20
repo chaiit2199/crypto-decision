@@ -7,6 +7,21 @@
         border-bottom: 1px solid var(--border);
     }
 
+    &__header-actions {
+        @apply flex items-center gap-3;
+    }
+
+    &__gold-link {
+        @apply rounded-lg px-3 py-2 text-xs font-medium no-underline;
+        border: 1px solid var(--border);
+        color: var(--text);
+
+        &:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+    }
+
     &__brand {
         @apply flex items-center gap-3 text-sm font-bold tracking-widest;
         text-decoration: none;
