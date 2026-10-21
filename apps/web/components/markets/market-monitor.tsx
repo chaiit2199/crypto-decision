@@ -10,7 +10,6 @@ import { formatTime, priceStatus } from "@/lib/format/market";
 import { selectedMarket } from "@/lib/markets/selected-market";
 import type { QuoteAsset } from "@/lib/markets/selected-market";
 
-import { OpportunityScanner } from "./opportunity-scanner";
 import { MarketRow } from "./market-row";
 import { MarketDetails } from "./market-details";
 import { WatchlistPicker } from "./watchlist-picker";
@@ -328,8 +327,7 @@ export function MarketMonitor({
             {data && quoteAsset === "USD" && availableAssets.length > 0 && (
                 <p className="market-monitor__notice" role="status">
                     Đang xem giá USD crypto qua Coinbase. Nghiên cứu vàng theo
-                    ngày:{" "}
-                    <Link href="/gold">trang Vàng USD</Link>.
+                    ngày: <Link href="/gold">trang Vàng USD</Link>.
                 </p>
             )}
             {selectedAsset && (
@@ -343,12 +341,6 @@ export function MarketMonitor({
                 />
             )}
 
-            <OpportunityScanner
-                key={quoteAsset}
-                exchange={quoteAsset === "USDT" ? "binance" : "coinbase"}
-                now={now}
-                refreshVersion={refreshVersion}
-            />
             <section
                 className="market-monitor__panel"
                 aria-labelledby="watchlist-title"
@@ -455,12 +447,7 @@ export function MarketMonitor({
             </section>
             <footer className="market-monitor__footer">
                 <span className="market-monitor__footer-brand">
-                    <Image
-                        src="/logo.png"
-                        alt=""
-                        width={24}
-                        height={24}
-                    />
+                    <Image src="/logo.png" alt="" width={24} height={24} />
                     CRYPTO DECISION
                 </span>
                 <span>
